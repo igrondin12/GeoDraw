@@ -29,6 +29,9 @@
 \usepackage{amsmath}
 \usepackage[super]{nth}
 \usepackage{array}
+\usepackage{tabularx}
+\usepackage{multirow}
+\usepackage{adjustbox}
 
 % This will set LaTeX to look for figures in the same directory as the .tex file
 \graphicspath{.} % The dot means current directory.
@@ -127,8 +130,28 @@ draw(y = abs(x-4), col=‘#0000ff’, brushType=‘simple’)
 \section{Language Concepts}
 The core concept a user needs to understand for GeoDraw, is how to create an equation of the form $<Y><eq><Exp>$ to generate the desired line and shading effect. An Expression,$<Exp>$ consists of the primitive data types $X$, real numbers and operations. Draw is a combining form in our language that is made up of an equation, color, bounds, and brush style.
 
+\newpage
 
 \section{Syntax}
+
+Here is the equivalent, formal definition of the grammar in Backus-Naur form of the parts of our language we have implemented:
+
+\begin{tabular}{@{}ll@{}}
+  $<Equation>$ & $::= <Y> <ws> <Equality> <ws> <Oper>$ \\
+  $<Y>$  & $::= y$ \\
+  $<X>$ & $::= x$ \\
+  $<Equality>$ & $::=  < | = | >$ \\
+  $<Oper>$  & $::= <Add> | <Sub> | <Div> | <Mult> | <X> | <Num>$ \\
+  $<Num>$ & $::=$ \textbf{R} \\
+  $<Sub>$ & $ ::= (<Oper> <ws>  - <ws> <Oper>)$ \\
+	$<Div>$ & $::=  ( <Oper> <ws>  / <ws> <Oper> )$ \\
+	$<Add>$ & $::=  ( <Oper> <ws>  + <ws> <Oper> )$ \\
+	$<Mult>$ & $::= ( <Oper> <ws>  * <ws> <Oper> )$\\
+	$<ws>$ & $::= ␣ | \varepsilon$ \\
+ \\
+
+\end{tabular}
+
 
 \textbf{Primitives:}
 
@@ -140,7 +163,6 @@ The core concept a user needs to understand for GeoDraw, is how to create an equ
 \item equalities ($< > =$)
 \end{itemize}
 
-\newpage
 \textbf{Combining Forms:}
 	\begin{itemize}
 	\item Math expressions
@@ -182,6 +204,37 @@ The core concept a user needs to understand for GeoDraw, is how to create an equ
 \begin{enumerate}[i]
 	\item We are going to use the following primitive types in generating an expression: x, y, real numbers, operations and equality symbols. These will allow the users to generate the line of almost any equation they wish to draw. Color will also be a primitive type that can be used for shading and drawing lines with different colors.
 	\item First, the user must create a canvas by inputting a height and width. Drawings will end at x and y unless other limits are specified. Drawings are the main elements in the language. They are a combination of an equation, its bounds, a color, and a brush style. Equations must have the y variable on the left, an $=, <,$ or $>$, followed by a mathematical expression. Bounds denote the limits of the equation for x, y, or both. Mathematical expressions combine our operations, real numbers, and the x variable. Brush styles consist of a list of points, which we will connect to look like brush strokes.
+
+	\begin{center}
+	\begin{adjustbox}{width=20cm, center}
+    \begin{tabular}{|c|c|c|c|c|}
+	  \hline
+	  Syntax & Abstract Syntax & Type & Prec./Assoc. & Meaning \\
+		\hline
+	  $n$ & Num of float & float & N/A & Primitive value, represent using the f\# float type\\
+	  \hline
+	  $Y | y$ & Y & Y & N/A & Primitive value that we use when graphing equations\\
+	  \hline
+	  $X | x$ & X & Oper & N/A & Primitive value that we use when graphing equations \\
+		\hline
+		$<$ & Less & Equality & N/A & Primitive value that we will use later when coloring shapes \\
+		\hline
+		$=$ & Equal & Equality & N/A & Primitive value that we will use later when coloring shapes \\
+		\hline
+		$>$ & Greater & Equality & N/A & Primitive value that we will use later when coloring shapes \\
+		\hline
+		$(o1 + o2)$ & Add of Oper * Oper & Oper & Unambiguous (parens) & Combining form that we use when calculating the line to graph \\
+		\hline
+		$(o1 - o2)$ & Sub of Oper * Oper & Oper & Unambiguous (parens) & Combining form that we use when calculating the line to graph \\
+		\hline
+		$(o1 / o2)$ & Div of Oper * Oper & Oper & Unambiguous (parens) & Combining form that we use when calculating the line to graph \\
+		\hline
+		$(o1 * o2)$ & Mult of Oper * Oper & Oper & Unambiguous (parens) & Combining form that we use when calculating the line to graph \\
+	  \hline
+	\end{tabular}
+	\end{adjustbox}
+	\end{center}
+
 	\item \textbf{Hierarchy Drawing:}\\
 	\includegraphics[scale=0.7]{images/hierarchyDrawing} \\
 	\item \textbf{AST for Example 1:}\\
