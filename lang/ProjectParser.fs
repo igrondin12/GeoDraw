@@ -19,6 +19,7 @@ let inParens p =
 (* GEODRAW GRAMMAR *)
 let expr, exprImpl = recparser()
 
+(* Number parsers *)
 let int_num =
     pmany1 pdigit
     |>> (fun ds -> Num (float (stringify ds)))
@@ -34,10 +35,13 @@ let float_num =
 
 let number = float_num <|> int_num
 
+
+(* variable parsers *)
 let px = ((pchar 'x') <|> (pchar 'X')) |>> (fun _ -> X)
 
 let py = ((pchar 'y') <|> (pchar 'Y')) |>> (fun _ -> Y)
 
+(* operation parsers *)
 let pOpSymbol = (psat (fun c -> c =  '+' || c = '-' || c =  '/' || c = '*')) 
 
 let oper, operImpl = recparser() 
@@ -48,6 +52,7 @@ let matchOper o1 c o2 =
     | '-' -> Sub(o1, o2)
     | '/' -> Div(o1, o2)
     | '*' -> Mult(o1, o2)
+    | _ -> OperError
 
 let pOp =
     inParens
@@ -61,14 +66,18 @@ let pOp =
 
 operImpl := pOp <|> number <|> px
 
-let pEquality = pbetween pws0 pws0 (psat(fun c -> c = '=' || c = '<' || c = '>'))
+(* equality parsers *)
+let pEquality =
+    pbetween pws0 pws0 (psat(fun c -> c = '=' || c = '<' || c = '>'))
 
 let matchEquality c : Equality =
     match c with
     | '=' -> Equal
     | '<' -> Less
     | '>' -> Greater
+    | _ -> EqualityError
 
+(* Equation Parsers *)
 let makeEquality y eq o =
     let eq' = matchEquality eq
     Equation(y, eq', o)

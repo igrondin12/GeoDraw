@@ -6,9 +6,15 @@ open ProjectInterpreter
 
 [<EntryPoint>]
 let main argv =
-    let input = prepare "y = (x + 0.1)"
-//    printfn "%A" (gen_points (Oper("(2 + 3)")) 3.0)
-    match (grammar input) with
-    | Success(res, _) -> printfn "%A" (eval res)
-    | Failure(_,_) -> printfn "nope"
+    try
+        let input = prepare argv.[0]                  // read in input
+        match (grammar input) with
+        | Success(res, _) -> printfn "%A" (eval res)  // evaluate parsed input
+        | Failure(_,_) -> printfn "nope"
+    with 
+    | _ -> printfn "Usage: please enter an Equation. See semantics table for details."       
     0
+      
+
+
+  

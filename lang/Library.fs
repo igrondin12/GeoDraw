@@ -10,6 +10,7 @@ type Oper =
 | Sub of Oper * Oper
 | Div of Oper * Oper
 | Add of Oper * Oper
+| OperError
 //| Sin of Oper
 //| Cos of Oper
 //| Sqrt of Oper
@@ -23,6 +24,7 @@ type Equality =
 | Equal
 | Less
 | Greater
+| EqualityError
 
 type Equation =
 | Equation of Y * Equality * Oper
