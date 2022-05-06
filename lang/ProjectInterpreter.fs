@@ -29,7 +29,17 @@ let gen_points o n =
     [0.0..0.1..n] |> List.map (fun x -> (x, (evalOp o x)))
 
 (* EVALUATOR *)
+let doctype="<?xml version=\"1.0\" standalone=\"no\"?>\n"
+let prefix = "<svg viewBox=\"0 0 100 100\"  xmlns=\"http://www.w3.org/2000/svg\">\n"
+let suffix = "</svg>\n"
+
+let draw xs : string =
+    let xs' = xs |> List.fold (fun acc (a, b) -> acc + (string a) + ", " + (string b) + " ") ""
+    "<polyline points=\"" + xs' + "\" fill=\"none\" stroke=\"black\"/>"
+    
 let eval e =
-    match e with
-    | Equation (y, eq, op) -> (gen_points op 3.0) //change the three later
-   
+    let str =
+        match e with
+        | Equation (y, eq, op) -> (draw (gen_points op 3.0)) //change the three later
+    doctype + prefix + str + suffix
+        
