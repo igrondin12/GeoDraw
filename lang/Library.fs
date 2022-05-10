@@ -10,12 +10,12 @@ type Oper =
 | Sub of Oper * Oper
 | Div of Oper * Oper
 | Add of Oper * Oper
+| Pow of Oper * Oper
 | OperError
 //| Sin of Oper
 //| Cos of Oper
 //| Sqrt of Oper
 //| Abs of Oper
-//| Pow of Oper * Oper
 
 type Y =
 | Y
@@ -26,6 +26,13 @@ type Equality =
 | Greater
 | EqualityError
 
-type Equation =
-| Equation of Y * Equality * Oper
+//type Equation =
+//| Equation of Y * Equality * Oper
 
+//type Canvas =
+//| Canvas of float * float
+
+type Expr =
+| Equation of Y * Equality * Oper
+| Canvas of float * float
+| Sequence of Expr list
