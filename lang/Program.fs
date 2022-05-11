@@ -24,32 +24,14 @@ let main argv =
     (* try to evaluate what we parsed... or not *)
     match ast_maybe with
     | Some ast ->
-//       let output = eval ast
-     //  printfn "%A" ast
-//        eval ast |> ignore
+        let output = eval ast
+        use sw = new StreamWriter("output.svg")    // create svg file
+        sw.WriteLine(output)                       // draw in svg file
         0
-       //use sw = new StreamWriter("output.svg")
-       //sw.WriteLine(output)    
     | None ->
        printfn "Invalid program."
        1
 
-(*
-*    try
-*        let input = prepare argv.[0]                  // read in input
-*
-*
-*        match (grammar input) with
-*        | Success(res, _) ->
-*             let output = eval res  // evaluate parsed input
-*             use sw = new StreamWriter("output.svg")
-*             sw.WriteLine(output)    
-*        | Failure(_,_) -> printfn "nope"
-*
-*    with 
-*    | _ -> printfn "Usage: please enter an Equation. See semantics table for details."       
-*    0
-  *)    
 
 
   

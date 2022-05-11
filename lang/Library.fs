@@ -26,8 +26,20 @@ type Equality =
 | Greater
 | EqualityError
 
-//type Equation =
-//| Equation of Y * Equality * Oper
+type Var =
+| Xvar
+| Yvar
+| VarError
+
+type Bound =
+| Bound of Var * Equality * float
+
+type DrawParams =
+| Equation of Y * Equality * Oper
+| Bounds of Bound list
+| Color of int * int * int
+| Brush of string
+
 
 //type Canvas =
 //| Canvas of float * float

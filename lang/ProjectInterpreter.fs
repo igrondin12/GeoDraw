@@ -7,6 +7,10 @@ let vbWidth = 200
 let vbHeight = 200
 let vbDims = " " + (string vbWidth) + " " + (string vbHeight)
 
+// global canvas dimensions
+//let canvasWidth = 0.0
+//let canvasHeight = 0.0
+
 (*
  * Evaluate an operation given a value for x.
  *
@@ -45,29 +49,34 @@ let draw xs : string =
     "<polyline points=\"" + xs' + "\" fill=\"none\" stroke=\"black\"/>"
     
 let eval expr =
-    let rec eval_rest xs =
+    (* evaluate everything after the canvas line in the program *)
+    let rec eval_rest xs cW cH =
         match xs with
         | [] -> ""
         | x::xs' ->
             let s = 
                 match x with    
-                | Equation (y, eq, op) -> (draw (gen_points op 3.0 vbWidth vbHeight))
+                | Equation (y, eq, op) -> (draw (gen_points op 3.0 cW cH))
                 | Canvas (_, _) -> failwith "No canvas calls after first line of program"
-            s + (eval_rest xs')
+                | _ -> failwith "Invalid syntax."
+            s + "\n" + (eval_rest xs' cW cH)
 
+    (* format svg code for drawings *)
     let sequence_str =
         match expr with
         | Sequence(es) ->
             let canvas_str = 
                 match es.Head with
                 | Canvas(x, y) ->
+                    let cW = x
+                    let cH = y
                     if x > vbWidth || y > vbHeight then
-                        failwith "Canvas dimensions outside " + (string vbWidth) + " x " + (string vbHeight)  
-                    "<rect width=\"" + (string x) + "\" height=\"" + (string y) + "\" style=\"fill:pink;stroke-width:3;stroke:rgb(0,0,0)\" />\n"
+                        failwith "Canvas dimensions outside viewbox macros. See documentation"
+                    "<rect width=\"" + (string x) + "\" height=\"" + (string y) + "\" style=\"fill:pink;stroke-width:1;stroke:rgb(0,0,0)\" />\n" + (eval_rest es.Tail cW cH)
                 | _ -> failwith "Need to start with a canvas"
-            (eval_rest es.Tail) |> String.concat "\n"
+            canvas_str
         | _ -> failwith "Need sequence"
 
-    doctype + prefix + canvas_str + sequence_str + suffix
+    doctype + prefix + sequence_str + suffix
 
         

@@ -16,6 +16,27 @@ let inParens p =
         (pchar ')')
         p
 
+(*
+ * Accepts whatever p accepts, surrounded by brackets, i.e., [p], and
+ * returns whatever p returns.
+ * @param p A parser
+ *)
+let inBrackets p =
+    pbetween
+        (pchar '[')
+        (pchar ']')
+        p
+
+(* Returns a list of p separated by sep
+ * @param p    A parser
+ * @param sep  A separator parser.
+ *)
+let pmany2sep p sep =
+    pseq
+        p
+        (pmany1 (pright sep p))
+        (fun (x, xs) -> x::xs)
+
 (* pcomment
  *   # Comments start with a hashtag but can't contain
  *   # one (or a newline).
@@ -46,7 +67,13 @@ let int_num =
     pmany1 pdigit
     |>> (fun ds -> (float (stringify ds)))
 
-let pint_num = int_num |>> Num
+let neg_int_num =
+    (pseq
+        (pchar '-')
+        (int_num)
+        (fun (c, n) -> (float ((string c) + (string n)))))
+
+let pint_num = (neg_int_num <|> int_num) |>> Num
 
 let float_num =
     (pseq
@@ -57,10 +84,16 @@ let float_num =
             (fun (c, n) -> (c, n)))
         (fun (n', (c, n)) -> (float (stringify (n'@[c]@n)))))
 
-let pfloat_num = float_num |>> Num
+let neg_float_num =
+    (pseq
+        (pchar '-')
+        (float_num)
+        (fun (c, n) -> (float ((string c) + (string n)))))
+
+let pfloat_num = (neg_float_num <|> float_num) |>> Num
 
 let pnumber = pfloat_num <|> pint_num
-let number = int_num <|> float_num
+let number = int_num <|> neg_int_num <|> float_num <|> neg_float_num
 
 (* Canvas parser *)                
 let pCoords =
@@ -73,7 +106,6 @@ let pCoords =
                 pws0
                 (fun (n, _) -> n))
             (fun (c, n) -> n))
-//        (fun (n1, n2) -> (n1, n2)))
          (fun (n1, n2) -> Canvas(float n1,float n2))) 
 
 let pCanvas = (pright (pstr "canvas") (inParens pCoords))
@@ -137,6 +169,31 @@ let pEquation =
         (fun (y, (eq, o)) -> makeEquality y eq o))
 
 exprImpl := pEquation <|> pCanvas
+
+(* BOUNDS PARSER *)
+let pVar = (pchar 'y') <|> (pchar 'Y') <|> (pchar 'x') <|> (pchar 'X')
+let matchVar c : Var =
+    match c with
+    | 'y' -> Yvar
+    | 'Y' -> Yvar
+    | 'x' -> Xvar
+    | 'X' -> Xvar
+    | _ -> VarError
+
+let bound =
+    (pseq
+        (pVar)
+        (pseq
+            (pEquality)
+            (number)
+            (fun (eq, n) -> ((matchEquality eq), n)))
+        (fun (v, (e, n)) -> Bound((matchVar v), e, n)))
+
+let pBounds = inBrackets (pmany2sep bound (pchar ','))
+
+(* DRAW PARSER *)
+//let pDraw = (pright (pstr "draw") (inParens (* DRAW PARAMS *)))
+
 
 (* pexprs
  *  Parses a sequence of expressions.  Sequences are
