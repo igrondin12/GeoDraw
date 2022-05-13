@@ -27,6 +27,21 @@ let inBrackets p =
         (pchar ']')
         p
 
+(* Accepts whatever p accepts, surrounded by quotes, i.e., 'p' or "p", and
+ * returns whatever p returns.
+ * @param p A parser
+ *)
+let inQuotes p =
+    (pbetween
+        (pchar '\"')
+        (pchar '\"')
+        p) <|>
+    (pbetween
+        (pchar '\'')
+        (pchar '\'')
+        p)
+
+
 (* Returns a list of p separated by sep
  * @param p    A parser
  * @param sep  A separator parser.
@@ -168,8 +183,6 @@ let pEquation =
             (fun (eq, o) -> (eq, o)))
         (fun (y, (eq, o)) -> makeEquality y eq o))
 
-exprImpl := pEquation <|> pCanvas
-
 (* BOUNDS PARSER *)
 let pVar = (pchar 'y') <|> (pchar 'Y') <|> (pchar 'x') <|> (pchar 'X')
 let matchVar c : Var =
@@ -187,13 +200,44 @@ let bound =
             (pEquality)
             (number)
             (fun (eq, n) -> ((matchEquality eq), n)))
-        (fun (v, (e, n)) -> Bound((matchVar v), e, n)))
+        (fun (v, (e, n)) -> SingleBound((matchVar v), e, n)))
 
-let pBounds = inBrackets (pmany2sep bound (pchar ','))
+let pBounds = (inBrackets (pmany2sep bound (pchar ','))) |>> BoundList
+
+(* COLOR PARSER *)
+let pColor = inParens (pmany2sep int_num (pchar ',')) |>> Color
+
+(* BRUSH PARSER *)
+
+(* pBrushName
+ *  Parses a brush name. Brush names are at least one character long,
+ *  starting with a letter, followed by any combination of letters
+ *  or numbers.
+ *)
+let pBrushChar = pletter <|> pdigit
+let pBrushName = pseq pletter (pmany0 pBrushChar |>> stringify)
+                     (fun (c, s) -> (string c) + s)
+
+let pBrush = (inQuotes pBrushName) |>>
+                 (fun s ->
+                     match s with
+                     | "simple" -> Simple(s)
+                     | _ -> Other(s))
 
 (* DRAW PARSER *)
-//let pDraw = (pright (pstr "draw") (inParens (* DRAW PARAMS *)))
+let pDraw = (pright (pstr "draw") (inParens (
+    (pseq
+        (pleft pEquation (pad (pchar ',')))
+        (pseq
+            (pleft pBounds (pad (pchar ',')))
+            (pseq
+                (pleft pColor (pad (pchar ',')))
+                (pleft pBrush (pad (pchar ',')))
+                (fun (xs, s) -> (xs, s)))
+            (fun (bs, (xs, s)) -> (bs, xs, s)))
+        (fun (e, (bs, xs, s)) -> Draw(e, bs, xs, s))))))
 
+exprImpl := pDraw <|> pCanvas
 
 (* pexprs
  *  Parses a sequence of expressions.  Sequences are

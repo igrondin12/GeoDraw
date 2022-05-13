@@ -31,20 +31,21 @@ type Var =
 | Yvar
 | VarError
 
-type Bound =
-| Bound of Var * Equality * float
-
-type DrawParams =
+type Equation =
 | Equation of Y * Equality * Oper
-| Bounds of Bound list
-| Color of int * int * int
-| Brush of string
 
+type Bound =
+| SingleBound of Var * Equality * float
+| BoundList of Bound list
 
-//type Canvas =
-//| Canvas of float * float
+type Color =
+| Color of float list
+
+type Brush =
+| Simple of string
+| Other of string
 
 type Expr =
-| Equation of Y * Equality * Oper
+| Draw of Equation * Bound * Color * Brush
 | Canvas of float * float
 | Sequence of Expr list

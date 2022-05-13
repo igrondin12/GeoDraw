@@ -7,10 +7,6 @@ let vbWidth = 200
 let vbHeight = 200
 let vbDims = " " + (string vbWidth) + " " + (string vbHeight)
 
-// global canvas dimensions
-//let canvasWidth = 0.0
-//let canvasHeight = 0.0
-
 (*
  * Evaluate an operation given a value for x.
  *
@@ -32,12 +28,19 @@ let rec evalOp o n =
 (*
  * Generate points to graph for x values between 0 and a given number.
  *
- * @param    n Upper bound for x values.
+ * @param   bm Map of bounds
+ * @param    o Operation to evaluate.
+ * @param   ch Canvas height (to flip right side up)
  * @return     List of float tuples
  *)
-let gen_points o n x' y' =
-    [0.0..0.1..n] |> List.map (fun x -> (x, (evalOp o x)))
-                  |> List.map (fun (x, y) -> (x, y' - y))
+let gen_points o (bm:Map<string, float>) cH =
+    let xL:float = bm.["xL"]
+    let xU:float = bm.["xU"]
+    let yL:float = bm.["yL"]
+    let yU:float = bm.["yU"]
+    [xL..0.1..xU] |> List.map (fun x -> (x, (evalOp o x)))
+                  |> List.map (fun (x, y) -> (x, cH - y))
+                  |> List.filter (fun (x, y) -> y < yU && y < yL)
 
 (* EVALUATOR *)
 let doctype="<?xml version=\"1.0\" standalone=\"no\"?>\n"
@@ -47,7 +50,35 @@ let suffix = "</svg>\n"
 let draw xs : string =
     let xs' = xs |> List.fold (fun acc (a, b) -> acc + (string a) + ", " + (string b) + " ") ""
     "<polyline points=\"" + xs' + "\" fill=\"none\" stroke=\"black\"/>"
-    
+
+let boundEval bound (map: Map<string, float>) cW cH =
+    let (v, eq, f) =
+        match bound with
+        | SingleBound(v, eq, f) -> (v, eq, f)
+        | _ -> failwith "nope"
+//    let v, eq, f = SingleBound(v, eq, f)
+    match (v, eq, f) with
+    | Xvar, Less, _ -> if f < cW then (map.["xU"] = f) else failwith "nope"
+    | Xvar, Greater, _ -> if f < cW then (map.["xL"] = f) else failwith "nope"
+    | Yvar, Less, _ -> if f < cH then (map.["yU"] = f) else failwith "nope"
+    | Yvar, Greater, _ -> if f < cH then (map.["yL"] = f) else failwith "nope"
+    | _, _, _ -> failwith "invalid bound"
+    |> ignore
+    map
+
+let eval equation op bounds cW cH =
+    let bm = [("xL", 0.0); ("xU", cW); ("yL", 0.0); ("yU", cH)] |> Map.ofList
+    let rec helper bounds map = 
+        match bounds with
+        | [] -> map
+        | b::bs ->
+            let map' = (boundEval b map cW cH)
+            helper bs map'
+    helper bounds bm |> ignore
+    // FIX BELOW HERE
+    draw (gen_points op bm cW cH)
+    bm    
+
 let eval expr =
     (* evaluate everything after the canvas line in the program *)
     let rec eval_rest xs cW cH =
