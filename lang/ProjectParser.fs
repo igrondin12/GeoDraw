@@ -110,6 +110,9 @@ let pfloat_num = (neg_float_num <|> float_num) |>> Num // <!> "pfloat_num"
 let pnumber = pfloat_num <|> pint_num
 let number = int_num <|> neg_int_num <|> float_num <|> neg_float_num
 
+(* COLOR PARSER *)
+let pColor = pad (inParens (pmany2sep int_num (pad (pchar ',')))) |>> Color <!> "pColor"
+
 (* Canvas parser *)                
 let pCoords =
     (pseq
@@ -121,9 +124,15 @@ let pCoords =
                 pws0
                 (fun (n, _) -> n))
             (fun (c, n) -> n))
-         (fun (n1, n2) -> Canvas(float n1,float n2))) 
+         (fun (n1, n2) -> (float n1,float n2))) 
 
-let pCanvas = (pright (pstr "canvas") (inParens pCoords)) <!> "pCanvas"
+let pCanvas =
+    (pright (pstr "canvas")
+        (((inParens pCoords) |>> (fun (n1, n2) -> Canvas(n1, n2, Color([255.0;255.0;255.0])))) <|>
+        (inParens (pseq
+                      (pleft (pCoords) (pad (pchar ',')))
+                      (pColor)
+                      (fun ((n1, n2), c) -> Canvas(n1, n2, c)))))) <!> "pCanvas"
 
 (* variable parsers *)
 let px = ((pchar 'x') <|> (pchar 'X')) |>> (fun _ -> X)
@@ -137,7 +146,7 @@ let pOpSymbol = (psat
 
 let oper, operImpl = recparser() 
 
-let matchOper o1 c o2 =
+let matchOper1 o1 c o2 =
     match c with
     | '+' -> Add(o1, o2)
     | '-' -> Sub(o1, o2)
@@ -146,7 +155,7 @@ let matchOper o1 c o2 =
     | '^' -> Pow(o1, o2)
     | _ -> OperError
 
-let pOp =
+let pOp1 =
     inParens
         (pseq
             (pleft oper pws0)
@@ -154,9 +163,25 @@ let pOp =
                 (pleft pOpSymbol pws0)
                 oper
                 (fun (c, o2) -> (c, o2)))
-            (fun (o1, (c, o2)) -> matchOper o1 c o2))
+            (fun (o1, (c, o2)) -> matchOper1 o1 c o2))
 
-operImpl := pOp <|> pnumber <|> px
+let pOpString = (pstr "abs") <|> (pstr "sin") <|> (pstr "cos") <|> (pstr "sqrt")
+
+let matchOper2 s o =
+    match s with
+    | "abs" -> Abs(o)
+    | "sin" -> Sin(o)
+    | "cos" -> Cos(o)
+    | "sqrt" -> Sqrt(o)
+    | _ -> OperError
+
+let pOp2 =
+    (pseq
+        (pad pOpString)
+        (pad (inParens (pad oper)))
+        (fun (s, o) -> matchOper2 s o)) <!> "pOp2"
+
+operImpl := pOp1 <|> pOp2 <|> pnumber <|> px
 
 (* equality parsers *)
 let pEquality =
@@ -203,10 +228,7 @@ let bound =
         (fun (v, (e, n)) -> SingleBound((matchVar v), e, n))) <!> "bound"
 
 let pBounds = (inBrackets (pmany2sep bound (pchar ','))) |>> BoundList <!> "pBounds"
-let pBound = (inBrackets bound)
-
-(* COLOR PARSER *)
-let pColor = pad (inParens (pmany2sep int_num (pad (pchar ',')))) |>> Color <!> "pColor"
+let pBound = (inBrackets bound) <|> (inBrackets pws0 |>> NoBounds)
 
 (* BRUSH PARSER *)
 
@@ -255,8 +277,8 @@ let grammar = pleft pexprs (peof <|> pcomment)
  *   and returns an optional Expr.
  *)
 let parse i =
-    //let i' = debug i
-    let i' = prepare i
+    let i' = debug i
+    //let i' = prepare i
     match grammar i' with
     | Success(ast, _) -> Some ast
     | Failure(_, _) -> None

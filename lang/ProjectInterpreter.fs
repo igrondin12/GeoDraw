@@ -1,14 +1,15 @@
 module ProjectInterpreter
 
 open CS334
+open System
 
 // MACROS
 let vbWidth = 600
 let vbHeight = 600
 let vbDims = " " + (string vbWidth) + " " + (string vbHeight)
-let brushWidth = 5
-let brushHeight = 5
-
+let brushWidth = 5.0
+let brushHeight = 5.0
+let offset = 40    // used to add randomness to brushes
 
 (*
  * Evaluate an operation given a value for x.
@@ -26,6 +27,10 @@ let rec evalOp o n =
     | Mult(o1, o2) -> (evalOp o1 n) * (evalOp o2 n)
     | Div(o1, o2) -> (evalOp o1 n) / (evalOp o2 n)
     | Pow(o1, o2) -> (evalOp o1 n) ** (evalOp o2 n)
+    | Abs(o) -> abs (evalOp o n)
+    | Sin(o) -> Math.Sin (evalOp o n)
+    | Cos(o) -> Math.Cos (evalOp o n)
+    | Sqrt(o) -> sqrt (evalOp o n)
     | _ -> failwith "Invalid Operation"
 
 (*
@@ -74,7 +79,7 @@ let gen_col_str c : string =
 let draw xs cs brush : string =
     let xs' = xs |> List.fold (fun acc (a, b) -> acc + (string a) + ", " + (string b) + " ") ""
     let col_str = "rgb(" + (gen_col_str cs) + ")"
-    "<polyline points=\"" + xs' + "\" fill=\"none\" stroke=\"" + col_str + "\"/>"
+    "<polyline points=\"" + xs' + "\" fill=\"none\" stroke=\"" + col_str + "\" stroke-width=\"0.5\"/>"
 
 (*
  * Fill in a map of bounds for an equation with the correct values
@@ -97,7 +102,6 @@ let boundEval bound (map: Map<string, float>) cW cH =
         | Yvar, Greater, _ -> if f < cH then "yL" else failwith "nope"
         | _, _, _ -> failwith "invalid bound"
     let map' = map.Add(key, f)
-    printfn "%A" map'
     map'
 
 (*
@@ -109,24 +113,55 @@ let boundEval bound (map: Map<string, float>) cW cH =
  * @param cH      The canvas height
  * @return        A list of points
  *)
-let eval_equation op bound cW cH =
+let make_bounds_map op bound cW cH =
     let bm = [("xL", 0.0); ("xU", cW); ("yL", 0.0); ("yU", cH)] |> Map.ofList
-    //let bm = Map.empty
     let bs =
         match bound with
         | SingleBound(v, eq, f) -> [SingleBound(v, eq, f)]
         | BoundList(bs) -> bs
+        | NoBounds(cs) -> []
     let rec helper bounds map = 
         match bounds with
         | [] -> map
         | b::bs' ->
             let map' = (boundEval b map cW cH)
             helper bs' map'
-    let bm' = helper bs bm
-    gen_points op bm' cH
+    helper bs bm
 
-let brush_stroke op bs cW cH cs b = 
-    (draw (eval_equation op bs cW cH) cs b)
+(*
+ * Generate svg code for multiple lines that make up a single brush stroke
+ * @param op    operation for the line
+ * @param bs    bounds for the line
+ * @param cW    canvas width
+ * @param cH    canvas height
+ * @param b     type of brush to use
+ *)
+let brush_stroke op bs cW cH cs b =
+    let bm = make_bounds_map op bs cW cH
+    let points = gen_points op bm cH
+    let brush_map : Map<string, (float * float) list> =
+        Map.empty.
+            Add("funky", [(3.0, 3.0); (2.0, 3.0); (3.0, 2.0)]).
+            Add("thick", [(1.0, 1.0); (2.0, 2.0); (3.0, 4.0)])
+
+    let rec helper (points: (float * float) list) (xs: (float * float) list) =
+        match xs with
+            | [] -> ""
+            | x::xs' ->
+                let difX = (fst x) - brushWidth
+                let difY = (snd x) - brushHeight
+                let r = System.Random()
+                let points' = points |> List.map(fun (px, py) -> ((px + difX + ((float (r.Next offset)) / 100.0)), (py - difY - ((float (r.Next offset)) / 100.0))))
+                                     |> List.filter (fun (px, py) -> py < (bm.["yU"]) && py > (bm.["yL"]))
+                                     |> List.filter (fun (px, py) -> px < bm.["xU"] && px > bm.["xL"])
+
+                (draw points' cs b) + (helper points xs')
+
+    match b with
+    | Simple -> (draw points cs b)
+    | Funky -> helper points brush_map.["funky"]
+    | Thick -> helper points brush_map.["thick"]
+    | Other(s) -> (draw points cs b) 
 
 let eval expr =
     (* evaluate everything after the canvas line in the program *)
@@ -139,8 +174,7 @@ let eval expr =
                 | Draw (e, bs, cs, b) ->
                     match e with
                     | Equation(y, eq, op) -> (brush_stroke op bs cW cH cs b) 
-//                    | _ -> failwith "equation expected"
-                | Canvas (_, _) -> failwith "No canvas calls after first line of program"
+                | Canvas (_, _, _) -> failwith "No canvas calls after first line of program"
                 | _ -> failwith "Invalid syntax."
             s + "\n" + (eval_rest xs' cW cH)
 
@@ -150,12 +184,12 @@ let eval expr =
         | Sequence(es) ->
             let canvas_str = 
                 match es.Head with
-                | Canvas(x, y) ->
+                | Canvas(x, y, c) ->
                     let cW = x
                     let cH = y
                     if x > vbWidth || y > vbHeight then
                         failwith "Canvas dimensions outside viewbox macros. See documentation"
-                    (eval_rest es.Tail cW cH) + "<rect width=\"" + (string x) + "\" height=\"" + (string y) + "\" style=\"fill:rgba(0,0,0,0);stroke-width:1;stroke:rgb(0,0,0)\" />\n"
+                    "<rect width=\"" + (string x) + "\" height=\"" + (string y) + "\" style=\"fill:rgb(" + (gen_col_str c) + ");stroke-width:1;stroke:rgb(0,0,0)\" />\n" + (eval_rest es.Tail cW cH) + "<rect width=\"" + (string x) + "\" height=\"" + (string y) + "\" style=\"fill:rgba(0,0,0,0);stroke-width:1;stroke:rgb(0,0,0)\" />\n"
 //                    "<rect width=\"" + (string x) + "\" height=\"" + (string y) + "\" style=\"fill:rgba(0,0,0,0);stroke-width:1;stroke:rgb(0,0,0)\" />\n" + (eval_rest es.Tail cW cH)
                 | _ -> failwith "Need to start with a canvas"
             canvas_str

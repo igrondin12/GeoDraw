@@ -11,11 +11,11 @@ type Oper =
 | Div of Oper * Oper
 | Add of Oper * Oper
 | Pow of Oper * Oper
+| Sin of Oper
+| Cos of Oper
+| Sqrt of Oper
+| Abs of Oper
 | OperError
-//| Sin of Oper
-//| Cos of Oper
-//| Sqrt of Oper
-//| Abs of Oper
 
 type Y =
 | Y
@@ -37,6 +37,7 @@ type Equation =
 type Bound =
 | SingleBound of Var * Equality * float
 | BoundList of Bound list
+| NoBounds of char list
 
 type Color =
 | Color of float list
@@ -49,5 +50,5 @@ type Brush =
 
 type Expr =
 | Draw of Equation * Bound * Color * Brush
-| Canvas of float * float
+| Canvas of float * float * Color
 | Sequence of Expr list
