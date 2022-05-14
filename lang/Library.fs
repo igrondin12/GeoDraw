@@ -42,7 +42,9 @@ type Color =
 | Color of float list
 
 type Brush =
-| Simple of string
+| Simple
+| Funky
+| Thick
 | Other of string
 
 type Expr =

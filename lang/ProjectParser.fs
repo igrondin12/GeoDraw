@@ -61,7 +61,7 @@ let pcomment =
     pbetween (pchar '#') peof (pmany1 pnotcom)
     <|> pbetween (pchar '#') pws1 (pmany1 pnotcom)
     |>> (fun _ -> true)
-    <!> "pcomment"
+ //   <!> "pcomment"
 
 (* my_ws
  *   Let's consider any non-newline whitespace or
@@ -88,7 +88,7 @@ let neg_int_num =
         (int_num)
         (fun (c, n) -> (float ((string c) + (string n)))))
 
-let pint_num = (neg_int_num <|> int_num) |>> Num
+let pint_num = (neg_int_num <|> int_num) |>> Num // <!> "pint_num"
 
 let float_num =
     (pseq
@@ -105,7 +105,7 @@ let neg_float_num =
         (float_num)
         (fun (c, n) -> (float ((string c) + (string n)))))
 
-let pfloat_num = (neg_float_num <|> float_num) |>> Num
+let pfloat_num = (neg_float_num <|> float_num) |>> Num // <!> "pfloat_num"
 
 let pnumber = pfloat_num <|> pint_num
 let number = int_num <|> neg_int_num <|> float_num <|> neg_float_num
@@ -123,7 +123,7 @@ let pCoords =
             (fun (c, n) -> n))
          (fun (n1, n2) -> Canvas(float n1,float n2))) 
 
-let pCanvas = (pright (pstr "canvas") (inParens pCoords))
+let pCanvas = (pright (pstr "canvas") (inParens pCoords)) <!> "pCanvas"
 
 (* variable parsers *)
 let px = ((pchar 'x') <|> (pchar 'X')) |>> (fun _ -> X)
@@ -184,7 +184,7 @@ let pEquation =
         (fun (y, (eq, o)) -> makeEquality y eq o))
 
 (* BOUNDS PARSER *)
-let pVar = (pchar 'y') <|> (pchar 'Y') <|> (pchar 'x') <|> (pchar 'X')
+let pVar = pad ((pchar 'y') <|> (pchar 'Y') <|> (pchar 'x') <|> (pchar 'X'))
 let matchVar c : Var =
     match c with
     | 'y' -> Yvar
@@ -197,15 +197,16 @@ let bound =
     (pseq
         (pVar)
         (pseq
-            (pEquality)
-            (number)
+            (pad pEquality)
+            (pad number)
             (fun (eq, n) -> ((matchEquality eq), n)))
-        (fun (v, (e, n)) -> SingleBound((matchVar v), e, n)))
+        (fun (v, (e, n)) -> SingleBound((matchVar v), e, n))) <!> "bound"
 
-let pBounds = (inBrackets (pmany2sep bound (pchar ','))) |>> BoundList
+let pBounds = (inBrackets (pmany2sep bound (pchar ','))) |>> BoundList <!> "pBounds"
+let pBound = (inBrackets bound)
 
 (* COLOR PARSER *)
-let pColor = inParens (pmany2sep int_num (pchar ',')) |>> Color
+let pColor = pad (inParens (pmany2sep int_num (pad (pchar ',')))) |>> Color <!> "pColor"
 
 (* BRUSH PARSER *)
 
@@ -218,24 +219,26 @@ let pBrushChar = pletter <|> pdigit
 let pBrushName = pseq pletter (pmany0 pBrushChar |>> stringify)
                      (fun (c, s) -> (string c) + s)
 
-let pBrush = (inQuotes pBrushName) |>>
+let pBrush = (pad (inQuotes pBrushName)) |>>
                  (fun s ->
                      match s with
-                     | "simple" -> Simple(s)
-                     | _ -> Other(s))
+                     | "simple" -> Simple
+                     | "funky" -> Funky
+                     | "thick" -> Thick
+                     | _ -> Other(s)) <!> "pBrush"
 
 (* DRAW PARSER *)
 let pDraw = (pright (pstr "draw") (inParens (
     (pseq
         (pleft pEquation (pad (pchar ',')))
         (pseq
-            (pleft pBounds (pad (pchar ',')))
+            (pleft (pBounds <|> pBound) (pad (pchar ',')))
             (pseq
                 (pleft pColor (pad (pchar ',')))
-                (pleft pBrush (pad (pchar ',')))
+                (pad pBrush)
                 (fun (xs, s) -> (xs, s)))
             (fun (bs, (xs, s)) -> (bs, xs, s)))
-        (fun (e, (bs, xs, s)) -> Draw(e, bs, xs, s))))))
+        (fun (e, (bs, xs, s)) -> Draw(e, bs, xs, s)))))) <!> "pDraw"
 
 exprImpl := pDraw <|> pCanvas
 
@@ -245,13 +248,14 @@ exprImpl := pDraw <|> pCanvas
  *)
 let pexprs = pmany1 (pleft (pad expr) pws0) |>> Sequence
 
-let grammar = pleft pexprs peof
+let grammar = pleft pexprs (peof <|> pcomment)
 
 (* parse
  *   User-friendly function that calls the GeoDraw parser
  *   and returns an optional Expr.
  *)
 let parse i =
+    //let i' = debug i
     let i' = prepare i
     match grammar i' with
     | Success(ast, _) -> Some ast

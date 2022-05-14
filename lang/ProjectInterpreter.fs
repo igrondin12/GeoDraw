@@ -3,9 +3,12 @@ module ProjectInterpreter
 open CS334
 
 // MACROS
-let vbWidth = 200
-let vbHeight = 200
+let vbWidth = 600
+let vbHeight = 600
 let vbDims = " " + (string vbWidth) + " " + (string vbHeight)
+let brushWidth = 5
+let brushHeight = 5
+
 
 (*
  * Evaluate an operation given a value for x.
@@ -39,45 +42,91 @@ let gen_points o (bm:Map<string, float>) cH =
     let yL:float = bm.["yL"]
     let yU:float = bm.["yU"]
     [xL..0.1..xU] |> List.map (fun x -> (x, (evalOp o x)))
+                  |> List.filter (fun (x, y) -> y < yU && y > yL)
+                  |> List.filter (fun (x, y) -> x < xU && x > xL)
                   |> List.map (fun (x, y) -> (x, cH - y))
-                  |> List.filter (fun (x, y) -> y < yU && y < yL)
 
 (* EVALUATOR *)
 let doctype="<?xml version=\"1.0\" standalone=\"no\"?>\n"
 let prefix = "<svg viewBox=\"0 0" + vbDims + "\"  xmlns=\"http://www.w3.org/2000/svg\">\n"
 let suffix = "</svg>\n"
 
-let draw xs : string =
-    let xs' = xs |> List.fold (fun acc (a, b) -> acc + (string a) + ", " + (string b) + " ") ""
-    "<polyline points=\"" + xs' + "\" fill=\"none\" stroke=\"black\"/>"
+(*
+ * Combine a list of RGB values for a color into one string with colons
+ * in between. ie [1;2;3] goes to "1, 2, 3"
+ * @param cs    A list of color values
+ * @return      A string
+ *)
+let gen_col_str c : string =
+    let cs =
+        match c with
+        | Color(lst) -> lst
+    let rec helper cs : string list =
+        match cs with
+        | [] -> []
+        | c::cs' ->
+            if c <= 255.0 then
+                [(string c)]@(helper cs')
+            else
+                failwith "color value must be less than 256"
+    (helper cs) |> String.concat ", "
 
+let draw xs cs brush : string =
+    let xs' = xs |> List.fold (fun acc (a, b) -> acc + (string a) + ", " + (string b) + " ") ""
+    let col_str = "rgb(" + (gen_col_str cs) + ")"
+    "<polyline points=\"" + xs' + "\" fill=\"none\" stroke=\"" + col_str + "\"/>"
+
+(*
+ * Fill in a map of bounds for an equation with the correct values
+ * @param bound    Bound to add to map.
+ * @param map      Map of bounds for the equation to modify
+ * @param cW       Total width for the canvas
+ * @param cH       Total height for the canvas
+ * @return         The modified map with the bound added
+ *)
 let boundEval bound (map: Map<string, float>) cW cH =
     let (v, eq, f) =
         match bound with
         | SingleBound(v, eq, f) -> (v, eq, f)
         | _ -> failwith "nope"
-//    let v, eq, f = SingleBound(v, eq, f)
-    match (v, eq, f) with
-    | Xvar, Less, _ -> if f < cW then (map.["xU"] = f) else failwith "nope"
-    | Xvar, Greater, _ -> if f < cW then (map.["xL"] = f) else failwith "nope"
-    | Yvar, Less, _ -> if f < cH then (map.["yU"] = f) else failwith "nope"
-    | Yvar, Greater, _ -> if f < cH then (map.["yL"] = f) else failwith "nope"
-    | _, _, _ -> failwith "invalid bound"
-    |> ignore
-    map
+    let key = 
+        match (v, eq, f) with
+        | Xvar, Less, _ -> if f < cW then "xU" else failwith "nope"
+        | Xvar, Greater, _ -> if f < cW then "xL" else failwith "nope"
+        | Yvar, Less, _ -> if f < cH then "yU" else failwith "nope"
+        | Yvar, Greater, _ -> if f < cH then "yL" else failwith "nope"
+        | _, _, _ -> failwith "invalid bound"
+    let map' = map.Add(key, f)
+    printfn "%A" map'
+    map'
 
-let eval equation op bounds cW cH =
+(*
+ * Generate a list of points of a given operation within the bounds provided
+ * by the user.
+ * @param op      The operation to evaluate.
+ * @param bounds  A list of Bounds
+ * @param cW      The canvas width
+ * @param cH      The canvas height
+ * @return        A list of points
+ *)
+let eval_equation op bound cW cH =
     let bm = [("xL", 0.0); ("xU", cW); ("yL", 0.0); ("yU", cH)] |> Map.ofList
+    //let bm = Map.empty
+    let bs =
+        match bound with
+        | SingleBound(v, eq, f) -> [SingleBound(v, eq, f)]
+        | BoundList(bs) -> bs
     let rec helper bounds map = 
         match bounds with
         | [] -> map
-        | b::bs ->
+        | b::bs' ->
             let map' = (boundEval b map cW cH)
-            helper bs map'
-    helper bounds bm |> ignore
-    // FIX BELOW HERE
-    draw (gen_points op bm cW cH)
-    bm    
+            helper bs' map'
+    let bm' = helper bs bm
+    gen_points op bm' cH
+
+let brush_stroke op bs cW cH cs b = 
+    (draw (eval_equation op bs cW cH) cs b)
 
 let eval expr =
     (* evaluate everything after the canvas line in the program *)
@@ -86,8 +135,11 @@ let eval expr =
         | [] -> ""
         | x::xs' ->
             let s = 
-                match x with    
-                | Equation (y, eq, op) -> (draw (gen_points op 3.0 cW cH))
+                match x with
+                | Draw (e, bs, cs, b) ->
+                    match e with
+                    | Equation(y, eq, op) -> (brush_stroke op bs cW cH cs b) 
+//                    | _ -> failwith "equation expected"
                 | Canvas (_, _) -> failwith "No canvas calls after first line of program"
                 | _ -> failwith "Invalid syntax."
             s + "\n" + (eval_rest xs' cW cH)
@@ -103,11 +155,13 @@ let eval expr =
                     let cH = y
                     if x > vbWidth || y > vbHeight then
                         failwith "Canvas dimensions outside viewbox macros. See documentation"
-                    "<rect width=\"" + (string x) + "\" height=\"" + (string y) + "\" style=\"fill:pink;stroke-width:1;stroke:rgb(0,0,0)\" />\n" + (eval_rest es.Tail cW cH)
+                    (eval_rest es.Tail cW cH) + "<rect width=\"" + (string x) + "\" height=\"" + (string y) + "\" style=\"fill:rgba(0,0,0,0);stroke-width:1;stroke:rgb(0,0,0)\" />\n"
+//                    "<rect width=\"" + (string x) + "\" height=\"" + (string y) + "\" style=\"fill:rgba(0,0,0,0);stroke-width:1;stroke:rgb(0,0,0)\" />\n" + (eval_rest es.Tail cW cH)
                 | _ -> failwith "Need to start with a canvas"
             canvas_str
         | _ -> failwith "Need sequence"
 
+    
     doctype + prefix + sequence_str + suffix
 
         
