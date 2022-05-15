@@ -83,7 +83,7 @@
 
 \section{Introduction}
 
-GeoDraw is a language that lets you use basic math equations (lines, circles, parabolas, etc) to construct basic cartoon drawings. This is inspired by a project in high school that was designed to help us learn more about geometry. It was difficult to find a graphing calculator online that made this particular project easy. GeoDraw will be a be a fun educational tool to strengthen students knowledge of geometrical equations.
+GeoDraw is a language that lets you use basic math equations (lines, circles, parabolas, etc) to construct basic cartoon drawings. This is inspired by a project in high school that was designed to help us learn more about geometry through drawing cartoons using geometrical equations. It was difficult to find a graphing calculator online that made this particular project easy, for example, one where you have control over the colors of your lines. GeoDraw will be a be a fun educational tool to strengthen students knowledge of geometrical equations.
 \\\\This language can also be viewed as a gentle introduction to computer graphics, which use much more complex mathematical equations, and to programming more generally. For that reason simplicity is an important part of our language design.
 
 
@@ -92,7 +92,7 @@ GeoDraw is a language that lets you use basic math equations (lines, circles, pa
 Our guiding principles are simplicity and readability. Since this language is targeted towards younger populations, who are most likely being introduced to programming, we want the language to be fairly intuitive. Furthermore, GeoDraw is a tool aiding students in learning graphing skills, and we do not want the complexity of the language to detract from that core objective.
 
 \section{Example Programs}
-All of the following examples can be run using typing "dotnet run example-X.geo" on the command line from the lang folder, with X representing the example number. Running the code will output a SVG file matching the name of the example in the lang folder. For example, example-1.geo with have an output file example-1.svg. This SVG file can be opened and displayed in a browser. The output of the SVG files are displayed below.
+All of the following examples can be run using typing "dotnet run example-X.geo" on the command line from the lang folder, with X representing the example number. Running the code will output a SVG file matching the name of the example in the lang folder. For example, example-1.geo with have an output file example-1.geo.svg. This SVG file can be opened and displayed in a browser. The output of the SVG files are displayed below.
 \newpage
 \textbf{Example 1: Diamond}
 
@@ -151,7 +151,7 @@ draw(y = (170 - sqrt (((30^2) - ((x - 170)^ 2)) )), [], (255, 255, 255), "thick"
 
 
 \section{Language Concepts}
-The core concept a user needs to understand for GeoDraw, is how to create an equation of the form $<$\texttt{Y}$><$\texttt{eq}$><$\texttt{Exp}$>$ to generate the desired line. An Expression,$<$\texttt{Exp}$>$ consists of the primitive data types $X$, real numbers and operations. Draw is a combining form in our language that is made up of an equation, color, bounds, and brush style.
+The core concept a user needs to understand for GeoDraw is how to create an equation of the form $<$\texttt{Y}$><$\texttt{eq}$><$\texttt{Exp}$>$ to generate the desired line. An Expression,$<$\texttt{Exp}$>$ consists of the primitive data types $X$, real numbers, and operations. \texttt{Draw} is a combining form in our language that is made up of an equation, color, bounds, and brush style.
 
 \newpage
 
@@ -172,7 +172,7 @@ Here is the equivalent, formal definition of the grammar in Backus-Naur of GeoDr
   $<\texttt{Sequence}>$ & $::=$ $<$\texttt{Canvas}$>$$<$\texttt{Expr}$>^{+}$ \\
   $<\texttt{Expr}>$ & $::=$ $<$Draw$>$ | <Sequence$>$ \\
 	$<$Draw$>$ & $::=$ draw($<$Equation$>,<$Bound$>,<$Color$>,<$Brush$>$) \\
-	$<$Canvas$>$ & $::=$ $(<$CanvasNum$>,<$CanvasNum$>,<$Color$>$) \\
+	$<$Canvas$>$ & $::=$ canvas$(<$CanvasNum$>,<$CanvasNum$>,<$Color$>) | $canvas$(<$CanvasNum$>,<$CanvasNum$>)$ \\
   $<$Equation$>$ & $::=$ $<$Y$><$Equality$><$Oper$>$ \\
   $<$Y$>$  & $::=$ Y | x \\
   $<$X$>$ & $::=$ X | x \\
@@ -193,7 +193,7 @@ Here is the equivalent, formal definition of the grammar in Backus-Naur of GeoDr
 	$<$Var$>$ & $::=$ $<$Xvar$> | <$Yvar$> | $VarError\\
 	$<$Xvar$>$ & $::=$ X | x\\
 	$<$Yvar$>$ & $::=$ Y| y\\
-	$<$Color$>$ & $::=$ $(<$Num$>, <$Num$>, <$Num$>)$ \\
+	$<$Color$>$ & $::=$ $(<$ColNum$>, <$ColNum$>, <$ColNum$>)$ \\
 	$<$Brush$>$ & $::=$ Simple | Funky | Thick | Other\\
 	$<$Num$>$ & $::=$ \textbf{R} \\
 	$<$ColNum$>$ & $::=$ $0 \leq$ Int $\leq 255$\\
@@ -204,8 +204,7 @@ Here is the equivalent, formal definition of the grammar in Backus-Naur of GeoDr
 
 
 \section{Semantics}
-
- We are going to use the following primitive types in generating an expression: x, y, real numbers, operations and equality symbols. These will allow the users to generate the line of almost any equation they wish to draw. Color will also be a primitive type that can be used for setting the background color and for creating lines of various colors.
+ We have the following primitive types: \texttt{x}, \texttt{y}, \texttt{float}, and equality symbols. Our main combining forms are \texttt{canvas}, \texttt{Color}, \texttt{Bound}, \texttt{Oper}, \texttt{Equation}, and \texttt{draw}. The first call of a program should always be \texttt{canvas}, and after that every call should be \texttt{draw}.
 
 	\begin{center}
     \begin{tabular}{|p{20mm}|p{35mm}|p{15mm}|p{20mm}|p{55mm}|}
@@ -275,7 +274,9 @@ Here is the equivalent, formal definition of the grammar in Backus-Naur of GeoDr
 	\includegraphics[scale=0.4]{images/astExample1.jpeg}
 
 
-\section{Remaining Work:} We would like to implement a custom brush feature, that allows the user to design a brush by entering a list of points. This is the last feature that we plan on implementing.
+\section{Remaining Work:} We would like to implement a custom brush feature, that allows the user to design a brush by entering a list of points and store this to use throughout a program. We are also interested in making our selection of available brushes more robust. \\
+
+Right now, all equations must be functions with x as the independent variable and y as the dependent variable. We would like to add functionality to allow x on the left side of the equation to improve user experience and allow for vertical lines. As a stretch goal, we would like to implement inequality shading for our equations.
 
 
 
