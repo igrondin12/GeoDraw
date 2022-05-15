@@ -78,18 +78,23 @@ let pad p = pbetween my_ws my_ws p
 let expr, exprImpl = recparser()
 
 (* Number parsers *)
+
+(* parses a positive integer *)
 let int_num =
     pmany1 pdigit
     |>> (fun ds -> (float (stringify ds)))
 
+(* parses a negative integer *)
 let neg_int_num =
     (pseq
         (pchar '-')
         (int_num)
         (fun (c, n) -> (float ((string c) + (string n)))))
 
+(* parses an integer, converts to a Num *)
 let pint_num = (neg_int_num <|> int_num) |>> Num // <!> "pint_num"
 
+(* parses a positive float *)
 let float_num =
     (pseq
         (pmany0 pdigit)
@@ -99,15 +104,20 @@ let float_num =
             (fun (c, n) -> (c, n)))
         (fun (n', (c, n)) -> (float (stringify (n'@[c]@n)))))
 
+(* parses a negative float *)
 let neg_float_num =
     (pseq
         (pchar '-')
         (float_num)
         (fun (c, n) -> (float ((string c) + (string n)))))
 
+(* parses a float, converts to Num *)
 let pfloat_num = (neg_float_num <|> float_num) |>> Num // <!> "pfloat_num"
 
+(* parses a number as a Num *)
 let pnumber = pfloat_num <|> pint_num
+
+(* parses a number as a float *)
 let number = int_num <|> neg_int_num <|> float_num <|> neg_float_num
 
 (* COLOR PARSER *)
@@ -126,6 +136,12 @@ let pCoords =
             (fun (c, n) -> n))
          (fun (n1, n2) -> (float n1,float n2))) 
 
+(*
+ * parses either canvas(x, y) or canvas(x, y, c) where
+ * x is the width of the canvas, y is the height, and
+ * c is a Color for the background. The default background
+ * color is white.
+ *)
 let pCanvas =
     (pright (pstr "canvas")
         (((inParens pCoords) |>> (fun (n1, n2) -> Canvas(n1, n2, Color([255.0;255.0;255.0])))) <|>
@@ -140,12 +156,21 @@ let px = ((pad (pchar 'x')) <|> (pad (pchar 'X'))) |>> (fun _ -> X)
 let py = ((pad (pchar 'y')) <|> (pad (pchar 'Y'))) |>> (fun _ -> Y)
 
 (* operation parsers *)
+let oper, operImpl = recparser() 
+
+(*
+ * parsers for the first type of operation, of the form (x OP y) where
+ * x and y are also operations.
+ *)
 let pOpSymbol = (psat
                     (fun c ->
                         c =  '+' || c = '-' || c =  '/' || c = '*' || c= '^')) 
-
-let oper, operImpl = recparser() 
-
+(*
+* Matches the parsed math symbol to different operation type
+* @param o1  The first operation in the operation
+* @param c   The parser charactor of the inputed math symbol
+* @param o2  The second operation in the operation
+*)
 let matchOper1 o1 c o2 =
     match c with
     | '+' -> Add(o1, o2)
@@ -165,8 +190,17 @@ let pOp1 =
                 (fun (c, o2) -> (c, o2)))
             (fun (o1, (c, o2)) -> matchOper1 o1 c o2))
 
+(*
+ * parsers for the second type of operation, of the form OP(x) where x
+ * is another operation.
+ *)
 let pOpString = (pstr "abs") <|> (pstr "sin") <|> (pstr "cos") <|> (pstr "sqrt")
 
+(*
+* Matches the parsed math string expression to different operation types
+* @param s   The string corresponsing to the operation
+* @param c   The operation
+*)
 let matchOper2 s o =
     match s with
     | "abs" -> Abs(o)
@@ -197,7 +231,10 @@ let matchEquality c : Equality =
 (* Equation Parsers *)
 let makeEquality y eq o =
     let eq' = matchEquality eq
-    Equation(y, eq', o)
+    if eq' = Equal then
+        Equation(y, eq', o)
+    else
+        failwith "Equal sign required in Equations"
 
 let pEquation =
     (pseq
@@ -218,6 +255,8 @@ let matchVar c : Var =
     | 'X' -> Xvar
     | _ -> VarError
 
+
+(* Parses a single bound *)
 let bound =
     (pseq
         (pVar)
@@ -225,7 +264,11 @@ let bound =
             (pad pEquality)
             (pad number)
             (fun (eq, n) -> ((matchEquality eq), n)))
-        (fun (v, (e, n)) -> SingleBound((matchVar v), e, n))) <!> "bound"
+        (fun (v, (e, n)) ->
+            if e = Less || e = Greater then
+                SingleBound((matchVar v), e, n)
+            else
+                failwith "bounds must have < or >, not ="))
 
 let pBounds = (inBrackets (pmany2sep bound (pchar ','))) |>> BoundList <!> "pBounds"
 let pBound = (inBrackets bound) <|> (inBrackets pws0 |>> NoBounds)

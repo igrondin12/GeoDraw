@@ -4,10 +4,10 @@ open CS334
 open System
 
 // MACROS
-let vbWidth = 600
-let vbHeight = 600
+let vbWidth = 600 // maximum height that can be specified
+let vbHeight = 600 
 let vbDims = " " + (string vbWidth) + " " + (string vbHeight)
-let brushWidth = 5.0
+let brushWidth = 5.0 //point list for brushes must be contained within a 5*5 space
 let brushHeight = 5.0
 let offset = 40    // used to add randomness to brushes
 
@@ -77,6 +77,13 @@ let gen_col_str c : string =
                 failwith "color value must be less than 256"
     (helper cs) |> String.concat ", "
 
+(*
+ * generates a line of svg code for a polyline.
+ * @param xs     List of points in the line
+ * @param cs     Color object (color of the line)
+ * @param brush  Type of brush to use
+ * @return       String of svg code
+ *)
 let draw xs cs brush : string =
     let xs' = xs |> List.fold (fun acc (a, b) -> acc + (string a) + ", " + (string b) + " ") ""
     let col_str = "rgb(" + (gen_col_str cs) + ")"
@@ -146,6 +153,7 @@ let brush_stroke op bs cW cH cs b =
             Add("funky", [(3.0, 3.0); (2.0, 3.0); (3.0, 2.0)]).
             Add("thick", [(1.0, 1.0); (2.0, 2.0); (3.0, 4.0)])
 
+    (* generates points based off of brush type *)
     let rec helper (points: (float * float) list) (xs: (float * float) list) =
         match xs with
             | [] -> ""
@@ -165,6 +173,11 @@ let brush_stroke op bs cW cH cs b =
     | Thick -> helper points brush_map.["thick"]
     | Other(s) -> (draw points cs b) 
 
+(*
+ * evaluate the program
+ * @param expr    AST
+ * @return        string of svg code
+ *)
 let eval expr =
     (* evaluate everything after the canvas line in the program *)
     let rec eval_rest xs cW cH =
