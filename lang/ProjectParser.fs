@@ -135,9 +135,9 @@ let pCanvas =
                       (fun ((n1, n2), c) -> Canvas(n1, n2, c)))))) <!> "pCanvas"
 
 (* variable parsers *)
-let px = ((pchar 'x') <|> (pchar 'X')) |>> (fun _ -> X)
+let px = ((pad (pchar 'x')) <|> (pad (pchar 'X'))) |>> (fun _ -> X)
 
-let py = ((pchar 'y') <|> (pchar 'Y')) |>> (fun _ -> Y)
+let py = ((pad (pchar 'y')) <|> (pad (pchar 'Y'))) |>> (fun _ -> Y)
 
 (* operation parsers *)
 let pOpSymbol = (psat
@@ -277,8 +277,8 @@ let grammar = pleft pexprs (peof <|> pcomment)
  *   and returns an optional Expr.
  *)
 let parse i =
-    let i' = debug i
-    //let i' = prepare i
+    //let i' = debug i
+    let i' = prepare i
     match grammar i' with
     | Success(ast, _) -> Some ast
     | Failure(_, _) -> None

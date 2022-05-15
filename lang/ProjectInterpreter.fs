@@ -46,7 +46,8 @@ let gen_points o (bm:Map<string, float>) cH =
     let xU:float = bm.["xU"]
     let yL:float = bm.["yL"]
     let yU:float = bm.["yU"]
-    [xL..0.1..xU] |> List.map (fun x -> (x, (evalOp o x)))
+    [xL..0.1..xU] |> List.map (fun x -> Math.Round(x, 1)) 
+                  |> List.map (fun x -> (x, (evalOp o x)))
                   |> List.filter (fun (x, y) -> y < yU && y > yL)
                   |> List.filter (fun (x, y) -> x < xU && x > xL)
                   |> List.map (fun (x, y) -> (x, cH - y))
