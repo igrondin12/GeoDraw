@@ -83,7 +83,7 @@
 
 \section{Introduction}
 
-GeoDraw is a language that lets you use basic math equations (lines, circles, parabolas, etc) to construct basic cartoon drawings. Shading can be done by using inequalities. This is inspired by a project in high school that was designed to help us learn more about geometry. It was difficult to find a graphing calculator online that made this particular project easy. GeoDraw will be a be a fun educational tool to strengthen students knowledge of geometrical equations.
+GeoDraw is a language that lets you use basic math equations (lines, circles, parabolas, etc) to construct basic cartoon drawings. This is inspired by a project in high school that was designed to help us learn more about geometry. It was difficult to find a graphing calculator online that made this particular project easy. GeoDraw will be a be a fun educational tool to strengthen students knowledge of geometrical equations.
 \\\\This language can also be viewed as a gentle introduction to computer graphics, which use much more complex mathematical equations, and to programming more generally. For that reason simplicity is an important part of our language design.
 
 
@@ -92,148 +92,135 @@ GeoDraw is a language that lets you use basic math equations (lines, circles, pa
 Our guiding principles are simplicity and readability. Since this language is targeted towards younger populations, who are most likely being introduced to programming, we want the language to be fairly intuitive. Furthermore, GeoDraw is a tool aiding students in learning graphing skills, and we do not want the complexity of the language to detract from that core objective.
 
 \section{Example Programs}
-
-\textbf{Example 1:}
+All of the following examples can be run using typing "dotnet run example-X.geo" on the command line from the lang folder, with X representing the example number. Running the code will output a SVG file matching the name of the example in the lang folder. For example, example-1.geo with have an output file example-1.svg. This SVG file can be opened and displayed in a browser. The output of the SVG files are displayed below.
+\newpage
+\textbf{Example 1: Diamond}
 
 \begin{verbatim}
-canvas(5,5)
-draw(y = 1, col=‘#000000’, brushType =‘simple’);
+canvas(400, 400)
+draw(y = abs((x - 200)), [], (74, 70, 166), 'simple')
+draw(y = ((-1 * abs((x - 200))) + 400), [], (74, 70, 166), 'simple')
 \end{verbatim}
 
 \begin{center}
-		\includegraphics[scale=0.8]{images/exampleProgram1}
+		\includegraphics[scale=0.3]{images/example-1}
 \end{center}
 
-\textbf{Example 2:}
+\textbf{Example 2: Smiley Face}
 
 \begin{verbatim}
-canvas(10, 10)
-draw(y = x, bounds=(2<x<8), col=‘#ff0000’, brushType =‘simple’)
+canvas(300, 300, (245, 212, 83))
+draw(y = ((((x - 150) / 10) ^ 2) + 50), [x > 50, x < 250], (128, 96, 69), 'funky')
+draw(y = ((-1 * (((x - 100) / 2.5) ^ 2)) + 250), [y > 200], (128, 96, 69), 'funky')
+draw(y = ((-1 * (((x - 200) / 2.5) ^ 2)) + 250), [y > 200], (128, 96, 69), 'funky')
 \end{verbatim}
 
 \begin{center}
-		\includegraphics[scale=0.5]{images/exampleProgram2}
+		\includegraphics[scale=0.3]{images/example-2}
 \end{center}
 
-\textbf{Example 3:}
-
+\textbf{Example 3: Ocean}
 \begin{verbatim}
-canvas(8, 8)
-draw(y = abs(x-4), col=‘#0000ff’, brushType=‘simple’)
+canvas(200, 200, (255,226,255))
+
+# Create the waves
+draw(y = (sin((x * .5)) * 10.5), [], (14, 255, 255), "thick")
+draw(y = ((sin(((x * .5) + 5)) * 10.5) + 5), [], (65, 202, 202), "thick")
+draw(y = ((sin(((x * .5) + 10)) * 10.5) + 10), [], (57, 183, 215), "thick")
+draw(y = ((sin((x * .5)) * 10.5) + 15), [], (14, 255, 255), "thick")
+draw(y = ((sin(((x * .5) + 5)) * 10.5) + 20), [], (65, 202, 202), "thick")
+draw(y = ((sin(((x * .5) + 10)) * 10.5) + 20), [], (57, 183, 215), "thick")
+draw(y = ((sin((x * .5)) * 10.5) + 25), [], (14, 255, 255), "thick")
+draw(y = ((sin(((x * .25) + 5)) * 10.5) + 30), [], (65, 202, 202), "thick")
+draw(y = ((sin(((x * .75) + 10)) * 10.5) + 35), [], (57, 183, 215), "thick")
+draw(y = ((sin((x * .5)) * 10.5) + 40), [], (14, 255, 255), "thick")
+draw(y = ((sin(((x * .75) + 5)) * 10.5) + 45), [], (65, 202, 202), "thick")
+draw(y = ((sin(((x * .25) + 10)) * 10.5) + 50), [], (57, 183, 215), "thick")
+draw(y = ((sin((x * .25)) * 10.5) + 50), [], (14, 255, 255), "thick")
+draw(y = ((sin(((x * .75) + 5)) * 10.5) + 52), [], (65, 202, 202), "thick")
+draw(y = ((sin(((x * .25) + 10)) * 10.5) + 54), [], (57, 183, 215), "thick")
+
+# Create the moon
+draw(y = (170 + sqrt (((30^2) - ((x - 170)^ 2)) )), [], (255, 255, 255), "thick")
+draw(y = (170 - sqrt (((30^2) - ((x - 170)^ 2)) )), [], (255, 255, 255), "thick")
 \end{verbatim}
 
 \begin{center}
-		\includegraphics[scale=0.5]{images/exampleProgram3}
+		\includegraphics[scale=0.8]{images/example-3}
 \end{center}
 
 
 \section{Language Concepts}
-The core concept a user needs to understand for GeoDraw, is how to create an equation of the form $<Y><eq><Exp>$ to generate the desired line and shading effect. An Expression,$<Exp>$ consists of the primitive data types $X$, real numbers and operations. Draw is a combining form in our language that is made up of an equation, color, bounds, and brush style.
+The core concept a user needs to understand for GeoDraw, is how to create an equation of the form $<$\texttt{Y}$><$\texttt{eq}$><$\texttt{Exp}$>$ to generate the desired line. An Expression,$<$\texttt{Exp}$>$ consists of the primitive data types $X$, real numbers and operations. Draw is a combining form in our language that is made up of an equation, color, bounds, and brush style.
 
 \newpage
 
 \section{Syntax}
 
-Here is the equivalent, formal definition of the grammar in Backus-Naur form of the parts of our language we have implemented:
-
-\begin{tabular}{@{}ll@{}}
-  $<\texttt{Sequence}>$ & ::= $<$\texttt{Canvas}$>$ $<$\texttt{Expr}$>^{+}$ \\
-  $<Expr>$ & $::= <Draw> | <Sequence>$ \\
-	$<Draw>$ & ::= draw($<ws><Equation><ws>,<ws><Bound><ws>,<ws><Color><ws>,<ws><Brush><ws>$) \\
-	$<Canvas>$ & $::= (<ws><CanvasNum><ws>,<ws><CanvasNum><ws> , <ws><Color><ws>)$ \\
-  $<Equation>$ & $::= <Y> <ws> <Equality> <ws> <Oper>$ \\
-  $<Y>$  & $::= Y | x$ \\
-  $<X>$ & $::= X | x$ \\
-  $<Equality>$ & $::=  < | = | >$ \\
-  $<Oper>$  & $::= <Add> | <Sub> | <Div> | <Mult> | <X> | <Num>$ \\
-  $<Sub>$ & $ ::= (<Oper> <ws>  - <ws> <Oper>)$ \\
-	$<Div>$ & $::=  ( <Oper> <ws>  / <ws> <Oper> )$ \\
-	$<Add>$ & $::=  ( <Oper> <ws>  + <ws> <Oper> )$ \\
-	$<Mult>$ & $::= ( <Oper> <ws>  * <ws> <Oper> )$\\
-	$<Pow>$ & $::=  ( <Oper> <ws>  ^ <ws> <Oper> )$\\
-	$<Sin>$ & $::= sin(<ws>  <Oper> <ws>)$\\
-	$<Cos>$ & $::= cos(<ws>  <Oper> <ws>)$\\
-	$<Sqrt>$ & $::= sqrt(<ws>  <Oper> <ws>)$\\
-	$<Abs>$ & $::= abs(<ws>  <Oper> <ws>)$\\
-  $<Bound>$ & $::= [<SingleBound>] | [<BoundList>] | [NoBounds]$\\
-	$<SingleBound>$ & $::= <ws> <Var> <ws> <Equality> <ws> <Num> <ws>$ \\
-	$<BoundList>$ & $::=<SingleBound> <SingleBound>^{+}$\\
-	$<Var>$ & $::=<Xvar> | <Yvar> | VarError$\\
-	$<Xvar>$ & $::=X | x$\\
-	$<Yvar>$ & $::=Y| y$\\
-	$<Color>$ & $::=(<ws> <Num> <ws>, <ws> <Num> <ws>, <ws> <Num> <ws>)$ \\
-	$<Brush>$ & $::=Simple | Funky | Thick | Other$\\
-	$<Num>$ & $::=$ \textbf{R} \\
-	$<ColNum>$ & $::= 0 \leq Int \leq 255$\\
-  $<CanvasNum>$ & $::= 0 \leq Int \leq 600$\\
-	$<ws>$ & $::= ␣ | \varepsilon$ \\
- \\
-
-\end{tabular}
-
-
-\textbf{Primitives:}
-
+The syntax of the language is as follows:
 \begin{itemize}
-\item x,y
-\item real numbers
-\item colors (hex codes)
-\item operations(+ - / * sin cos pow sqrt abs)
-\item equalities ($< > =$)
+\item The overall program creates a drawing. A drawing is made up of:
+\begin{itemize}
+\item Canvas: The canvas is made up of the the height and the width of a canvas and a background color. The user does not need to specify a background color; the default color is white. The bottom left of the canvas is the point (0,0).
+\item Draw: The draw function creates a line using the specified equation and bounds. Furthermore, the user must specify a color and a brush style for the line. We have three build in brush types: Simple, Funky, and Thick.
+\end{itemize}
 \end{itemize}
 
-\textbf{Combining Forms:}
-	\begin{itemize}
-	\item Math expressions
-			\begin{itemize}
-			\item x
-			\item Real numbers
-			\item Mult of Expr * Expr
-			\item Sub of Expr * Expr
-			\item Div of Expr * Expr
-			\item Add of Expr * Expr
-			\item Sin of Expr
-			\item Cos of Expr
-			\item Sqrt of Expr
-			\item Abs of Expr
-			\item Pow of Expr * Expr
-			\end{itemize}
-	\item Equations
-			\begin{itemize}
-			\item $<y> <Eq> <Expr>$
-			\end{itemize}
-	\item Bounds (default: canvas boundaries)
-			\begin{itemize}
-			\item \textbf{R} $< y <$ \textbf{R}
-			\item \textbf{R} $< x <$ \textbf{R}
-			\end{itemize}
-	\item Canvas → takes height and width
-	\item Point → real number * real number
-	\item Brush Style → List of points in 5 x 5 square
-	\begin{itemize}
-	\item Real numbers must be between 0 and 5
-	\end{itemize}
-	\item Drawing → Equation * Bounds * Color * Brush Style
-
-\end{itemize}
+Here is the equivalent, formal definition of the grammar in Backus-Naur of GeoDraw (whitespace is ommitted for simplicity, but it can be added anywhere): \\\\
+\ttfamily
+\begin{tabular}{@{}ll@{}}
+  $<\texttt{Sequence}>$ & $::=$ $<$\texttt{Canvas}$>$$<$\texttt{Expr}$>^{+}$ \\
+  $<\texttt{Expr}>$ & $::=$ $<$Draw$>$ | <Sequence$>$ \\
+	$<$Draw$>$ & $::=$ draw($<$Equation$>,<$Bound$>,<$Color$>,<$Brush$>$) \\
+	$<$Canvas$>$ & $::=$ $(<$CanvasNum$>,<$CanvasNum$>,<$Color$>$) \\
+  $<$Equation$>$ & $::=$ $<$Y$><$Equality$><$Oper$>$ \\
+  $<$Y$>$  & $::=$ Y | x \\
+  $<$X$>$ & $::=$ X | x \\
+  $<$Equality$>$ & $::=$  $< | = | >$ \\
+  $<$Oper$>$  & $::=$ $<$Add$> | <$Sub$> | <$Div$> | <$Mult$> | <$X$> | <$Num$>$ \\
+  $<$Sub$>$ & $ ::=$ $(<$Oper$>-<$Oper$>)$ \\
+	$<$Div$>$ & $::=$ $(<$Oper$>/<$Oper$>)$ \\
+	$<$Add$>$ & $::=$ $(<$Oper$> + <$Oper$> )$ \\
+	$<$Mult$>$ & $::=$ $(<$Oper$> * <$Oper$> )$\\
+	$<$Pow$>$ & $::=$ $(<$Oper$> \wedge <$Oper$> )$\\
+	$<$Sin$>$ & $::=$ sin($<$Oper$>)$\\
+	$<$Cos$>$ & $::=$ cos($<$Oper$>)$\\
+	$<$Sqrt$>$ & $::=$ sqrt($<$Oper$>)$\\
+	$<$Abs$>$ & $::=$ abs($<$Oper$>)$\\
+  $<$Bound$>$ & $::=$ $[<$SingleBound$>] | [<$BoundList$>] | [$NoBounds$]$\\
+	$<$SingleBound$>$ & $::=$ $<$Var$> <$Equality$> <$Num$>$ \\
+	$<$BoundList$>$ & $::=$ $<$SingleBound$><$SingleBound$>^{+}$\\
+	$<$Var$>$ & $::=$ $<$Xvar$> | <$Yvar$> | $VarError\\
+	$<$Xvar$>$ & $::=$ X | x\\
+	$<$Yvar$>$ & $::=$ Y| y\\
+	$<$Color$>$ & $::=$ $(<$Num$>, <$Num$>, <$Num$>)$ \\
+	$<$Brush$>$ & $::=$ Simple | Funky | Thick | Other\\
+	$<$Num$>$ & $::=$ \textbf{R} \\
+	$<$ColNum$>$ & $::=$ $0 \leq$ Int $\leq 255$\\
+  $<$CanvasNum$>$ & $::=$ $0 \leq$ Int $\leq 600$\\
+ \\
+\end{tabular}
+\rmfamily
 
 
 \section{Semantics}
 
-\begin{enumerate}[i]
-	\item We are going to use the following primitive types in generating an expression: x, y, real numbers, operations and equality symbols. These will allow the users to generate the line of almost any equation they wish to draw. Color will also be a primitive type that can be used for shading and drawing lines with different colors.
-	\item First, the user must create a canvas by inputting a height and width. Drawings will end at x and y unless other limits are specified. Drawings are the main elements in the language. They are a combination of an equation, its bounds, a color, and a brush style. Equations must have the y variable on the left, an $=, <,$ or $>$, followed by a mathematical expression. Bounds denote the limits of the equation for x, y, or both. Mathematical expressions combine our operations, real numbers, and the x variable. Brush styles consist of a list of points, which we will connect to look like brush strokes. \\\\
+ We are going to use the following primitive types in generating an expression: x, y, real numbers, operations and equality symbols. These will allow the users to generate the line of almost any equation they wish to draw. Color will also be a primitive type that can be used for setting the background color and for creating lines of various colors.
+
 	\begin{center}
-	\begin{adjustbox}{width=20cm, center}
-    \begin{tabular}{lccccm{2cm}l}
+    \begin{tabular}{|p{20mm}|p{35mm}|p{15mm}|p{20mm}|p{55mm}|}
 	  \hline
 	  Syntax & Abstract Syntax & Type & Prec./Assoc. & Meaning \\
 		\hline
 	  $n$ & Num of float & float & N/A & Primitive value, represent using the f\# float type\\
 	  \hline
 	  $Y | y$ & Y & Y & N/A & Primitive value that we use when graphing equations\\
+		\hline
+	  $Y | y$ & varY & Var & N/A & Primitive value used inside of bounds\\
 	  \hline
 	  $X | x$ & X & Oper & N/A & Primitive value that we use when graphing equations \\
+		\hline
+	  $X | x$ & varX & Var & N/A & Primitive value used inside of bounds \\
 		\hline
 		$<$ & Less & Equality & N/A & Primitive value that we will use later when coloring shapes \\
 		\hline
@@ -258,44 +245,37 @@ Here is the equivalent, formal definition of the grammar in Backus-Naur form of 
 		\text{sqrt} $o1$ & Sqrt of Oper & Oper & Unambiguous (parens) & Combining form that we use when calculating the line to graph \\
 		\hline
 		$ \text{abs } o1$ & Abs of Oper & Oper & Unambiguous (parens) & Combining form that we use when calculating the line to graph \\
+		\hline
+		$y = o$ & Equation of Y * Equality * Oper & Equation & N/A & Combining form that gives an equation for a line or curve to graph \\
+		\hline
+		$x < n \mid x > n \mid y < n \mid y > n$ & SingleBound of Var * Equality * float & Bound & N/A & Restricts the region that a line is graphed on \\
+		\hline
+		 (n, n, n) & Color of float list & Color & N/A & Represents a color in RGB format \\
+		 \hline
+ 		 ‘simple’ $\mid$ ‘funky’ $\mid$ ‘thick’ $\mid$ s & Simple $\mid$ Funky $\mid$ Thick $\mid$ Other of s &
+		 Brush & N/A & Brush type to use when drawing a specific line. Simple is a single line, while Funky and Thick are preprogrammed \\
+		 \hline
+ 		 draw(e, [bounds], c, brush) & Draw of Equation * Bound * Color * Brush &
+		 Expr & N/A & Combining form to draw a line. Contains the equation for the line, bounds within which the line should be drawn, color for the line, and brush type for the line. \\
+		 \hline
+ 		 canvas$(n, n)$ $\mid$ canvas$(n, n, c)$ & Canvas of float * float * Color &
+		 Expr & N/A & Sets the canvas on which the user will be drawing, and sets its background color optionally. This line MUST be called as the first line in a program, and must not be called again. \\
 	  \hline
-	\end{tabular}
-	\end{adjustbox}
+	\end{tabular}s
 	\end{center}
 
-	\item \textbf{Hierarchy Drawing:}\\
+	The user must first create a canvas by inputting a height, width and an optional background color. Drawings will end at the sides of the canvas unless bounds are specified. Drawings are the main elements in the language. They are a combination of an equation, its bounds, a color, and a brush style. Equations must have the y variable on the left, an $=$, followed by a mathematical expression. Bounds denote the limits of the equation for x, y, or both. Mathematical expressions combine our operations, real numbers, and the x variable. Brush styles consist of a string, which indicates a brush strokes type we have created. \\\\
+
+	Our programs does not read any input. The user must input a program as a file. The output of evaluating the program is a drawing consisting of the lines specified in the program. This is in the form of an SVG file. \\\\
+
+	\textbf{Hierarchy Drawing:}\\
 	\includegraphics[scale=0.7]{images/hierarchyDrawing} \\
-	\item \textbf{AST for Example 1:}\\
-	\includegraphics[scale=0.7]{images/ASTExample1}
+	\textbf{AST for Example 1:}\\
+	\includegraphics[scale=0.4]{images/astExample1.jpeg}
 
-	\textbf{AST for Example 2:} \\
-	\includegraphics[scale=0.7]{images/ASTExample2}
 
-	\textbf{AST for Example 3:}\\
-	\includegraphics[scale=0.7]{images/ASTExample3}
+\section{Remaining Work:} We would like to implement a custom brush feature, that allows the user to design a brush by entering a list of points. This is the last feature that we plan on implementing.
 
-	\item No, our programs do not read any input. However, the user can input a program as a file so they do not have to retype all the commands.
-	\item The output of evaluating the program is a drawing consisting of the lines specified in the program. This will be in the form of an SVG file.
-	\item First, we get the canvas size. \\
-	\includegraphics[scale=0.7]{images/seq1} \\
-	Then, we get the equation that we want to draw. \\
-	\includegraphics[scale=0.7]{images/seq2} \\
-	\newpage
-	Next, we get the bounds for where to evaluate $x$ and $y$. If they are default, they are the canvas size. So in this case, $0 <= x <= 5$ and $0 <= y <= 5$. \\
-	\includegraphics[scale=0.7]{images/seq3} \\
-	Then, we get the hex code for the color we would like to draw with. In this case it is \#000000 for black. \\
-	\includegraphics[scale=0.7]{images/seq4} \\
-	Then we get the brushStyle. In this case, it is ‘simple’ for just a single line.\\
-	\includegraphics[scale=0.7]{images/seq5} \\
-	\newpage
-	Now, we have everything we need to draw the equation, so we do that using SVG.\\
-	\includegraphics[scale=0.7]{images/seq6} \\
-	We have no more draw commands left to evaluate, so we are done. \\
- \includegraphics[scale=0.7]{images/seq7} \\
-
- \item \textbf{Remaining Work:}\\ We would like to implement a custom brush feature, that allows the user to design a brush by entering a list of points.
-
-\end{enumerate}
 
 
 % DO NOT DELETE ANYTHING BELOW THIS LINE
