@@ -137,16 +137,35 @@ The core concept a user needs to understand for GeoDraw, is how to create an equ
 Here is the equivalent, formal definition of the grammar in Backus-Naur form of the parts of our language we have implemented:
 
 \begin{tabular}{@{}ll@{}}
+  $<\texttt{Sequence}>$ & ::= $<$\texttt{Canvas}$>$ $<$\texttt{Expr}$>^{+}$ \\
+  $<Expr>$ & $::= <Draw> | <Sequence>$ \\
+	$<Draw>$ & ::= draw($<ws><Equation><ws>,<ws><Bound><ws>,<ws><Color><ws>,<ws><Brush><ws>$) \\
+	$<Canvas>$ & $::= (<ws><CanvasNum><ws>,<ws><CanvasNum><ws> , <ws><Color><ws>)$ \\
   $<Equation>$ & $::= <Y> <ws> <Equality> <ws> <Oper>$ \\
-  $<Y>$  & $::= y$ \\
-  $<X>$ & $::= x$ \\
+  $<Y>$  & $::= Y | x$ \\
+  $<X>$ & $::= X | x$ \\
   $<Equality>$ & $::=  < | = | >$ \\
   $<Oper>$  & $::= <Add> | <Sub> | <Div> | <Mult> | <X> | <Num>$ \\
-  $<Num>$ & $::=$ \textbf{R} \\
   $<Sub>$ & $ ::= (<Oper> <ws>  - <ws> <Oper>)$ \\
 	$<Div>$ & $::=  ( <Oper> <ws>  / <ws> <Oper> )$ \\
 	$<Add>$ & $::=  ( <Oper> <ws>  + <ws> <Oper> )$ \\
 	$<Mult>$ & $::= ( <Oper> <ws>  * <ws> <Oper> )$\\
+	$<Pow>$ & $::=  ( <Oper> <ws>  ^ <ws> <Oper> )$\\
+	$<Sin>$ & $::= sin(<ws>  <Oper> <ws>)$\\
+	$<Cos>$ & $::= cos(<ws>  <Oper> <ws>)$\\
+	$<Sqrt>$ & $::= sqrt(<ws>  <Oper> <ws>)$\\
+	$<Abs>$ & $::= abs(<ws>  <Oper> <ws>)$\\
+  $<Bound>$ & $::= [<SingleBound>] | [<BoundList>] | [NoBounds]$\\
+	$<SingleBound>$ & $::= <ws> <Var> <ws> <Equality> <ws> <Num> <ws>$ \\
+	$<BoundList>$ & $::=<SingleBound> <SingleBound>^{+}$\\
+	$<Var>$ & $::=<Xvar> | <Yvar> | VarError$\\
+	$<Xvar>$ & $::=X | x$\\
+	$<Yvar>$ & $::=Y| y$\\
+	$<Color>$ & $::=(<ws> <Num> <ws>, <ws> <Num> <ws>, <ws> <Num> <ws>)$ \\
+	$<Brush>$ & $::=Simple | Funky | Thick | Other$\\
+	$<Num>$ & $::=$ \textbf{R} \\
+	$<ColNum>$ & $::= 0 \leq Int \leq 255$\\
+  $<CanvasNum>$ & $::= 0 \leq Int \leq 600$\\
 	$<ws>$ & $::= ␣ | \varepsilon$ \\
  \\
 
@@ -203,11 +222,10 @@ Here is the equivalent, formal definition of the grammar in Backus-Naur form of 
 
 \begin{enumerate}[i]
 	\item We are going to use the following primitive types in generating an expression: x, y, real numbers, operations and equality symbols. These will allow the users to generate the line of almost any equation they wish to draw. Color will also be a primitive type that can be used for shading and drawing lines with different colors.
-	\item First, the user must create a canvas by inputting a height and width. Drawings will end at x and y unless other limits are specified. Drawings are the main elements in the language. They are a combination of an equation, its bounds, a color, and a brush style. Equations must have the y variable on the left, an $=, <,$ or $>$, followed by a mathematical expression. Bounds denote the limits of the equation for x, y, or both. Mathematical expressions combine our operations, real numbers, and the x variable. Brush styles consist of a list of points, which we will connect to look like brush strokes.
-
+	\item First, the user must create a canvas by inputting a height and width. Drawings will end at x and y unless other limits are specified. Drawings are the main elements in the language. They are a combination of an equation, its bounds, a color, and a brush style. Equations must have the y variable on the left, an $=, <,$ or $>$, followed by a mathematical expression. Bounds denote the limits of the equation for x, y, or both. Mathematical expressions combine our operations, real numbers, and the x variable. Brush styles consist of a list of points, which we will connect to look like brush strokes. \\\\
 	\begin{center}
 	\begin{adjustbox}{width=20cm, center}
-    \begin{tabular}{|c|c|c|c|c|}
+    \begin{tabular}{lccccm{2cm}l}
 	  \hline
 	  Syntax & Abstract Syntax & Type & Prec./Assoc. & Meaning \\
 		\hline
@@ -230,6 +248,16 @@ Here is the equivalent, formal definition of the grammar in Backus-Naur form of 
 		$(o1 / o2)$ & Div of Oper * Oper & Oper & Unambiguous (parens) & Combining form that we use when calculating the line to graph \\
 		\hline
 		$(o1 * o2)$ & Mult of Oper * Oper & Oper & Unambiguous (parens) & Combining form that we use when calculating the line to graph \\
+		\hline
+		$(o1 \wedge o2)$ & Pow of Oper $\wedge$ Oper & Oper & Unambiguous (parens) & Combining form that we use when calculating the line to graph \\
+		\hline
+		$ \sin o1$ & Sin of Oper & Oper & Unambiguous (parens) & Combining form that we use when calculating the line to graph \\
+		\hline
+		$ \cos o1$ & Cos of Oper & Oper & Unambiguous (parens) & Combining form that we use when calculating the line to graph \\
+		\hline
+		\text{sqrt} $o1$ & Sqrt of Oper & Oper & Unambiguous (parens) & Combining form that we use when calculating the line to graph \\
+		\hline
+		$ \text{abs } o1$ & Abs of Oper & Oper & Unambiguous (parens) & Combining form that we use when calculating the line to graph \\
 	  \hline
 	\end{tabular}
 	\end{adjustbox}
@@ -264,6 +292,8 @@ Here is the equivalent, formal definition of the grammar in Backus-Naur form of 
 	\includegraphics[scale=0.7]{images/seq6} \\
 	We have no more draw commands left to evaluate, so we are done. \\
  \includegraphics[scale=0.7]{images/seq7} \\
+
+ \item \textbf{Remaining Work:}\\ We would like to implement a custom brush feature, that allows the user to design a brush by entering a list of points.
 
 \end{enumerate}
 
