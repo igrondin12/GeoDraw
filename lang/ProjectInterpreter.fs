@@ -48,9 +48,9 @@ let gen_points o (bm:Map<string, float>) cH =
     let yU:float = bm.["yU"]
     [xL..0.1..xU] |> List.map (fun x -> Math.Round(x, 1)) 
                   |> List.map (fun x -> (x, (evalOp o x)))
-                  |> List.filter (fun (x, y) -> y < yU && y > yL)
                   |> List.filter (fun (x, y) -> x < xU && x > xL)
                   |> List.map (fun (x, y) -> (x, cH - y))
+                  |> List.filter (fun (x, y) -> y > (cH - yU) && y < (cH - yL))
 
 (* EVALUATOR *)
 let doctype="<?xml version=\"1.0\" standalone=\"no\"?>\n"
@@ -102,6 +102,7 @@ let boundEval bound (map: Map<string, float>) cW cH =
         | Yvar, Less, _ -> if f < cH then "yU" else failwith "nope"
         | Yvar, Greater, _ -> if f < cH then "yL" else failwith "nope"
         | _, _, _ -> failwith "invalid bound"
+
     let map' = map.Add(key, f)
     map'
 
@@ -153,7 +154,7 @@ let brush_stroke op bs cW cH cs b =
                 let difY = (snd x) - brushHeight
                 let r = System.Random()
                 let points' = points |> List.map(fun (px, py) -> ((px + difX + ((float (r.Next offset)) / 100.0)), (py - difY - ((float (r.Next offset)) / 100.0))))
-                                     |> List.filter (fun (px, py) -> py < (bm.["yU"]) && py > (bm.["yL"]))
+                                     |> List.filter (fun (px, py) -> py > (cH - bm.["yU"]) && py < (cH - bm.["yL"]))
                                      |> List.filter (fun (px, py) -> px < bm.["xU"] && px > bm.["xL"])
 
                 (draw points' cs b) + (helper points xs')
