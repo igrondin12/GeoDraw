@@ -52,3 +52,5 @@ type Expr =
 | Draw of Equation * Bound * Color * Brush
 | Canvas of float * float * Color
 | Sequence of Expr list
+
+exception Error of string

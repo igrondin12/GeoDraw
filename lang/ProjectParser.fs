@@ -121,7 +121,7 @@ let pnumber = pfloat_num <|> pint_num
 let number = int_num <|> neg_int_num <|> float_num <|> neg_float_num
 
 (* COLOR PARSER *)
-let pColor = pad (inParens (pmany2sep int_num (pad (pchar ',')))) |>> Color <!> "pColor"
+let pColor = pad (inParens (pmany2sep (pad int_num) (pad (pchar ',')))) |>> Color <!> "pColor"
 
 (* Canvas parser *)                
 let pCoords =
@@ -144,11 +144,11 @@ let pCoords =
  *)
 let pCanvas =
     (pright (pstr "canvas")
-        (((inParens pCoords) |>> (fun (n1, n2) -> Canvas(n1, n2, Color([255.0;255.0;255.0])))) <|>
-        (inParens (pseq
+        (((pad (inParens pCoords)) |>> (fun (n1, n2) -> Canvas(n1, n2, Color([255.0;255.0;255.0])))) <|>
+        ((pad (inParens (pseq
                       (pleft (pCoords) (pad (pchar ',')))
                       (pColor)
-                      (fun ((n1, n2), c) -> Canvas(n1, n2, c)))))) <!> "pCanvas"
+                      (fun ((n1, n2), c) -> Canvas(n1, n2, c)))))))) <!> "pCanvas"
 
 (* variable parsers *)
 let px = ((pad (pchar 'x')) <|> (pad (pchar 'X'))) |>> (fun _ -> X)
@@ -215,7 +215,7 @@ let pOp2 =
         (pad (inParens (pad oper)))
         (fun (s, o) -> matchOper2 s o)) <!> "pOp2"
 
-operImpl := pOp1 <|> pOp2 <|> pnumber <|> px
+operImpl := (pad pOp1) <|> (pad pOp2) <|> (pad pnumber) <|> (pad px)
 
 (* equality parsers *)
 let pEquality =
@@ -271,7 +271,7 @@ let bound =
                 failwith "bounds must have < or >, not ="))
 
 let pBounds = (inBrackets (pmany2sep bound (pchar ','))) |>> BoundList <!> "pBounds"
-let pBound = (inBrackets bound) <|> (inBrackets pws0 |>> NoBounds)
+let pBound = (inBrackets bound) <|> ((inBrackets pws0) |>> NoBounds)
 
 (* BRUSH PARSER *)
 
@@ -293,7 +293,7 @@ let pBrush = (pad (inQuotes pBrushName)) |>>
                      | _ -> Other(s)) <!> "pBrush"
 
 (* DRAW PARSER *)
-let pDraw = (pright (pstr "draw") (inParens (
+let pDraw = (pright (pstr "draw") (pad (inParens (
     (pseq
         (pleft pEquation (pad (pchar ',')))
         (pseq
@@ -303,7 +303,7 @@ let pDraw = (pright (pstr "draw") (inParens (
                 (pad pBrush)
                 (fun (xs, s) -> (xs, s)))
             (fun (bs, (xs, s)) -> (bs, xs, s)))
-        (fun (e, (bs, xs, s)) -> Draw(e, bs, xs, s)))))) <!> "pDraw"
+        (fun (e, (bs, xs, s)) -> Draw(e, bs, xs, s))))))) <!> "pDraw"
 
 exprImpl := pDraw <|> pCanvas
 

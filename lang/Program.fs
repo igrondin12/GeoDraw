@@ -12,23 +12,28 @@ let main argv =
         printfn "Usage: dotnet run <file>"
         exit 1
 
-    (* read in the input file *)
-    let file = argv.[0]
-    let input = File.ReadAllText file
+    try
+        (* read in the input file *)
+        let file = argv.[0]
+        let input = File.ReadAllText file
 
-    (* try to parse what they gave us *)
-    let ast_maybe = parse input
+        (* try to parse what they gave us *)
+        let ast_maybe = parse input
 
-    (* try to evaluate what we parsed... or not *)
-    match ast_maybe with
-    | Some ast ->
-        let output = eval ast
-        use sw = new StreamWriter(file + ".svg")    // create svg file
-        sw.WriteLine(output)                         // draw in svg file
-        0
-    | None ->
-       printfn "Invalid program."
-       1
+        (* try to evaluate what we parsed... or not *)
+        match ast_maybe with
+        | Some ast ->
+            let output = eval ast
+            use sw = new StreamWriter(file + ".svg")    // create svg file
+            sw.WriteLine(output)                         // draw in svg file
+            printfn "Success! %s created." (file + ".svg")
+            0
+        | None ->
+           printfn "Invalid program."
+           1
+    with
+    | Error(s) -> printfn "Error: %s" s; 1
+    | _ -> printfn "Program failed. Exiting"; 1
 
 
 

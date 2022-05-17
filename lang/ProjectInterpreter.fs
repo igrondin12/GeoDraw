@@ -74,7 +74,7 @@ let gen_col_str c : string =
             if c <= 255.0 then
                 [(string c)]@(helper cs')
             else
-                failwith "color value must be less than 256"
+                raise (Error("color value must be less than 256"))
     (helper cs) |> String.concat ", "
 
 (*
@@ -101,14 +101,14 @@ let boundEval bound (map: Map<string, float>) cW cH =
     let (v, eq, f) =
         match bound with
         | SingleBound(v, eq, f) -> (v, eq, f)
-        | _ -> failwith "nope"
+        | _ -> raise (Error("invalid bounds field"))
     let key = 
         match (v, eq, f) with
         | Xvar, Less, _ -> if f < cW then "xU" else failwith "nope"
         | Xvar, Greater, _ -> if f < cW then "xL" else failwith "nope"
         | Yvar, Less, _ -> if f < cH then "yU" else failwith "nope"
         | Yvar, Greater, _ -> if f < cH then "yL" else failwith "nope"
-        | _, _, _ -> failwith "invalid bound"
+        | _, _, _ -> raise (Error("invalid bounds field"))
 
     let map' = map.Add(key, f)
     map'
@@ -171,7 +171,7 @@ let brush_stroke op bs cW cH cs b =
     | Simple -> (draw points cs b)
     | Funky -> helper points brush_map.["funky"]
     | Thick -> helper points brush_map.["thick"]
-    | Other(s) -> (draw points cs b) 
+    | Other(s) -> (draw points cs b) // right now, default is simple brush
 
 (*
  * evaluate the program
@@ -190,7 +190,7 @@ let eval expr =
                     match e with
                     | Equation(y, eq, op) -> (brush_stroke op bs cW cH cs b) 
                 | Canvas (_, _, _) -> failwith "No canvas calls after first line of program"
-                | _ -> failwith "Invalid syntax."
+                | _ -> raise (Error("Invalid syntax."))
             s + "\n" + (eval_rest xs' cW cH)
 
     (* format svg code for drawings *)
@@ -203,12 +203,12 @@ let eval expr =
                     let cW = x
                     let cH = y
                     if x > vbWidth || y > vbHeight then
-                        failwith "Canvas dimensions outside viewbox macros. See documentation"
+                        raise (Error("Canvas dimensions outside viewbox macros. See documentation"))
                     "<rect width=\"" + (string x) + "\" height=\"" + (string y) + "\" style=\"fill:rgb(" + (gen_col_str c) + ");stroke-width:1;stroke:rgb(0,0,0)\" />\n" + (eval_rest es.Tail cW cH) + "<rect width=\"" + (string x) + "\" height=\"" + (string y) + "\" style=\"fill:rgba(0,0,0,0);stroke-width:1;stroke:rgb(0,0,0)\" />\n"
 //                    "<rect width=\"" + (string x) + "\" height=\"" + (string y) + "\" style=\"fill:rgba(0,0,0,0);stroke-width:1;stroke:rgb(0,0,0)\" />\n" + (eval_rest es.Tail cW cH)
-                | _ -> failwith "Need to start with a canvas"
+                | _ -> raise (Error("Need to start with a canvas"))
             canvas_str
-        | _ -> failwith "Need sequence"
+        | _ -> raise (Error("Need sequence"))
 
     
     doctype + prefix + sequence_str + suffix
