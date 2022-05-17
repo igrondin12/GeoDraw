@@ -3,6 +3,9 @@ module ProjectParser
 open CS334
 open Parser
 
+(* a list of words that should never be brush names *)
+let reserved_brushes = ["whispy"; "simple"; "funky"; "thick" ]
+
 (* HELPER COMBINATORS *)
 
 (*
@@ -284,12 +287,37 @@ let pBrushChar = pletter <|> pdigit
 let pBrushName = pseq pletter (pmany0 pBrushChar |>> stringify)
                      (fun (c, s) -> (string c) + s)
 
+let pPoint =
+    (inParens
+        (pseq
+            (pleft (pad number) (pad (pchar ',')))
+            (pad number)
+            (fun (n1, n2) -> (n1, n2)))) <!> "pPoint"
+
+let pPointList =
+    (inBrackets (pad (pmany2sep pPoint (pad (pchar ','))))) <!> "pPointList"
+
+let pNewBrush =
+    (pseq
+        (pleft (pstr "brush") pws1)
+        (pseq
+            (pleft pBrushName pws0)
+            (pright (pad (pchar '=')) (pad  pPointList))
+            (fun (n, ps) ->
+                if List.contains n reserved_brushes then
+                    raise (Error ("cannot use preset brush name"))
+                else
+                    (n, ps)))
+    (fun (b, (n, ps)) -> Assignment(n, ps))) <!> "pNewBrush"
+        
+
 let pBrush = (pad (inQuotes pBrushName)) |>>
                  (fun s ->
                      match s with
                      | "simple" -> Simple
                      | "funky" -> Funky
                      | "thick" -> Thick
+                     | "whispy" -> Whispy
                      | _ -> Other(s)) <!> "pBrush"
 
 (* DRAW PARSER *)
@@ -305,7 +333,7 @@ let pDraw = (pright (pstr "draw") (pad (inParens (
             (fun (bs, (xs, s)) -> (bs, xs, s)))
         (fun (e, (bs, xs, s)) -> Draw(e, bs, xs, s))))))) <!> "pDraw"
 
-exprImpl := pDraw <|> pCanvas
+exprImpl := pDraw <|> pCanvas <|> pNewBrush
 
 (* pexprs
  *  Parses a sequence of expressions.  Sequences are

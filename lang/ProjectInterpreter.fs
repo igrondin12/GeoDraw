@@ -3,6 +3,9 @@ module ProjectInterpreter
 open CS334
 open System
 
+(* Represents our brush variable environment *)
+type Env = Map<string, (float * float) list>
+
 // MACROS
 let vbWidth = 600 // maximum height that can be specified
 let vbHeight = 600 
@@ -145,19 +148,23 @@ let make_bounds_map op bound cW cH =
  * @param cH    canvas height
  * @param b     type of brush to use
  *)
-let brush_stroke op bs cW cH cs b =
+let brush_stroke op bs cW cH cs b (env: Env) =
     let bm = make_bounds_map op bs cW cH
     let points = gen_points op bm cH
     let brush_map : Map<string, (float * float) list> =
         Map.empty.
             Add("funky", [(3.0, 3.0); (2.0, 3.0); (3.0, 2.0)]).
-            Add("thick", [(1.0, 1.0); (2.0, 2.0); (3.0, 4.0)])
+            Add("whispy", [(1.0, 1.0); (2.0, 2.0); (3.0, 4.0)]).
+            Add("thick", [(1.0, 1.0); (2.0, 2.0); (3.0, 3.0); (4.0,4.0);
+                         (1.0, 4.0); (2.0, 3.0); (3.0,2.0); (4.0, 1.0)])
 
     (* generates points based off of brush type *)
     let rec helper (points: (float * float) list) (xs: (float * float) list) =
         match xs with
             | [] -> ""
             | x::xs' ->
+                if (fst x) > 5 || (snd x) > 5 then
+                    raise (Error("Brush points must be within [0,5]"))
                 let difX = (fst x) - brushWidth
                 let difY = (snd x) - brushHeight
                 let r = System.Random()
@@ -171,28 +178,41 @@ let brush_stroke op bs cW cH cs b =
     | Simple -> (draw points cs b)
     | Funky -> helper points brush_map.["funky"]
     | Thick -> helper points brush_map.["thick"]
-    | Other(s) -> (draw points cs b) // right now, default is simple brush
+    | Whispy -> helper points brush_map.["whispy"]
+    | Other(s) ->  helper points env.[s] 
 
 (*
  * evaluate the program
  * @param expr    AST
  * @return        string of svg code
  *)
-let eval expr =
+let eval expr (env: Env) =
+    printfn "in eval"
     (* evaluate everything after the canvas line in the program *)
-    let rec eval_rest xs cW cH =
+    let rec eval_rest xs cW cH (env: Env) : string * Env=
+        printfn "in eval_rest"
+        printfn "%A" env
         match xs with
-        | [] -> ""
+        | [] -> "", env
         | x::xs' ->
-            let s = 
-                match x with
-                | Draw (e, bs, cs, b) ->
-                    match e with
-                    | Equation(y, eq, op) -> (brush_stroke op bs cW cH cs b) 
-                | Canvas (_, _, _) -> failwith "No canvas calls after first line of program"
-                | _ -> raise (Error("Invalid syntax."))
-            s + "\n" + (eval_rest xs' cW cH)
+//            let s = 
+            match x with
+            | Draw (e, bs, cs, b) ->
+                match e with
+                | Equation(y, eq, op) ->
+                    let s = (brush_stroke op bs cW cH cs b env)
+                    let rest = eval_rest xs' cW cH env
+                    (s + "\n" + (fst rest)), env
+            | Assignment(s, ps) ->
+                let env' = env.Add (s, ps)
+                let rest = eval_rest xs' cW cH env'
+                (fst rest), env'
+            | Canvas (_, _, _) -> raise (Error ("No canvas calls after first line of program"))
+            | _ -> raise (Error("Invalid syntax."))
+//            let er_str, e = eval_rest xs' cW cH env
+//            ((fst s) + "\n" + er_str), env
 
+    printfn "about to draw"
     (* format svg code for drawings *)
     let sequence_str =
         match expr with
@@ -204,13 +224,11 @@ let eval expr =
                     let cH = y
                     if x > vbWidth || y > vbHeight then
                         raise (Error("Canvas dimensions outside viewbox macros. See documentation"))
-                    "<rect width=\"" + (string x) + "\" height=\"" + (string y) + "\" style=\"fill:rgb(" + (gen_col_str c) + ");stroke-width:1;stroke:rgb(0,0,0)\" />\n" + (eval_rest es.Tail cW cH) + "<rect width=\"" + (string x) + "\" height=\"" + (string y) + "\" style=\"fill:rgba(0,0,0,0);stroke-width:1;stroke:rgb(0,0,0)\" />\n"
-//                    "<rect width=\"" + (string x) + "\" height=\"" + (string y) + "\" style=\"fill:rgba(0,0,0,0);stroke-width:1;stroke:rgb(0,0,0)\" />\n" + (eval_rest es.Tail cW cH)
+                    let str = eval_rest es.Tail cW cH env
+                    "<rect width=\"" + (string x) + "\" height=\"" + (string y) + "\" style=\"fill:rgb(" + (gen_col_str c) + ");stroke-width:1;stroke:rgb(0,0,0)\" />\n" + (fst str) + "<rect width=\"" + (string x) + "\" height=\"" + (string y) + "\" style=\"fill:rgba(0,0,0,0);stroke-width:1;stroke:rgb(0,0,0)\" />\n"
                 | _ -> raise (Error("Need to start with a canvas"))
             canvas_str
         | _ -> raise (Error("Need sequence"))
-
-    
     doctype + prefix + sequence_str + suffix
 
         

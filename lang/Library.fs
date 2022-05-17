@@ -46,11 +46,13 @@ type Brush =
 | Simple
 | Funky
 | Thick
+| Whispy
 | Other of string
 
 type Expr =
 | Draw of Equation * Bound * Color * Brush
 | Canvas of float * float * Color
 | Sequence of Expr list
+| Assignment of string * (float * float) list
 
 exception Error of string
