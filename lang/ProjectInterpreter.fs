@@ -141,6 +141,32 @@ let make_bounds_map op bound cW cH =
     helper bs bm
 
 (*
+ * Split list of points if there is supposed to be a gap
+ * (from bounds constraints) and then generate svg code for each list
+ * @param    ps List of points
+ * @param    cs List of colors (for draw function)
+ * @param     b Brush type
+ * @return      A tuple of lists
+ *)
+let draw_split_points (points: (float*float) list) cs b =
+    let len = (points.Length) - 2
+    let is = [0..len]
+    let rec helper js (ps: (float*float) list) =
+        match js with
+        | [] -> [ps]
+        | j::js' ->
+            if(((fst ps.[j+1]) - (fst ps.[j])) > 0.5) then
+                let f, b = List.splitAt (j+1) ps
+                let l = (List.length b) - 2
+                let ks = [0..l]
+                f::(helper ks b)
+            else
+                helper js' ps
+
+    helper is points
+        |> List.map (fun xs -> (draw xs cs b)) |> List.fold (+) "\n"
+    
+(*
  * Generate svg code for multiple lines that make up a single brush stroke
  * @param op    operation for the line
  * @param bs    bounds for the line
@@ -153,13 +179,15 @@ let brush_stroke op bs cW cH cs b (env: Env) =
     let points = gen_points op bm cH
     let brush_map : Map<string, (float * float) list> =
         Map.empty.
+            Add("simple", [(2.5,2.5)]).
             Add("funky", [(3.0, 3.0); (2.0, 3.0); (3.0, 2.0)]).
             Add("whispy", [(1.0, 1.0); (2.0, 2.0); (3.0, 4.0)]).
             Add("thick", [(1.0, 1.0); (2.0, 2.0); (3.0, 3.0); (4.0,4.0);
-                         (1.0, 4.0); (2.0, 3.0); (3.0,2.0); (4.0, 1.0)])
+                         (1.0, 4.0); (2.0, 3.0); (3.0,2.0); (4.0, 1.0)]).
+            Add("sparse", [(1.0, 1.0); (1.0, 4.0); (4.0, 4.0); (4.0, 1.0)])
 
     (* generates points based off of brush type *)
-    let rec helper (points: (float * float) list) (xs: (float * float) list) =
+    let rec helper (points: (float * float) list) (xs: (float * float) list) (rand: int) =
         match xs with
             | [] -> ""
             | x::xs' ->
@@ -171,15 +199,43 @@ let brush_stroke op bs cW cH cs b (env: Env) =
                 let points' = points |> List.map(fun (px, py) -> ((px + difX + ((float (r.Next offset)) / 100.0)), (py - difY - ((float (r.Next offset)) / 100.0))))
                                      |> List.filter (fun (px, py) -> py > (cH - bm.["yU"]) && py < (cH - bm.["yL"]))
                                      |> List.filter (fun (px, py) -> px < bm.["xU"] && px > bm.["xL"])
-
-                (draw points' cs b) + (helper points xs')
+                let res = 
+                    if (rand = 1) then 
+                        (draw_split_points points' cs b) + (helper points xs' 1)
+                    else
+                        (draw_split_points points cs b)  + (helper points xs' 0)
+                res 
 
     match b with
-    | Simple -> (draw points cs b)
-    | Funky -> helper points brush_map.["funky"]
-    | Thick -> helper points brush_map.["thick"]
-    | Whispy -> helper points brush_map.["whispy"]
-    | Other(s) ->  helper points env.[s] 
+    | Simple -> helper points brush_map.["simple"] 0
+    | Funky -> helper points brush_map.["funky"] 1
+    | Thick -> helper points brush_map.["thick"] 1
+    | Whispy -> helper points brush_map.["whispy"] 1
+    | Sparse -> helper points brush_map.["sparse"] 1
+    | Other(s) ->  helper points env.[s] 1 
+
+(*
+ * Draws gridlines of a given interval
+ * @param    f interval
+ * @param   cW canvas max width
+ * @param   cH canvas max height
+ * return      svg code
+ *)
+let drawGridlines (f:int) cW cH=
+    // vertical lines
+    let vert_str = 
+        [0..f..cW]
+            |> List.map (fun n -> (string n) + "," + (string 0) + " " + (string n) + ", " + (string cH) + " ")
+            |> List.map (fun s -> "<polyline points=\"" + s + "\" fill=\"none\" stroke=\"rgb(175,175,175)\" stroke-width=\"0.5\"/>\n")
+            |> List.fold (+) ""
+    // horizontal lines
+    let hor_str =
+        [0..f..cH]
+            |> List.map (fun n -> (string 0) + "," + (string n) + " " + (string cW) + ", " + (string n) + " ")
+            |> List.map (fun s -> "<polyline points=\"" + s + "\" fill=\"none\" stroke=\"rgb(175,175,175)\" stroke-width=\"0.5\"/>\n")
+            |> List.fold (+) ""
+    vert_str + hor_str
+    
 
 (*
  * evaluate the program
@@ -187,15 +243,11 @@ let brush_stroke op bs cW cH cs b (env: Env) =
  * @return        string of svg code
  *)
 let eval expr (env: Env) =
-    printfn "in eval"
     (* evaluate everything after the canvas line in the program *)
     let rec eval_rest xs cW cH (env: Env) : string * Env=
-        printfn "in eval_rest"
-        printfn "%A" env
         match xs with
         | [] -> "", env
         | x::xs' ->
-//            let s = 
             match x with
             | Draw (e, bs, cs, b) ->
                 match e with
@@ -208,11 +260,12 @@ let eval expr (env: Env) =
                 let rest = eval_rest xs' cW cH env'
                 (fst rest), env'
             | Canvas (_, _, _) -> raise (Error ("No canvas calls after first line of program"))
+            | Gridline(f) ->
+                let s = drawGridlines (int f) (int cW) (int cH)
+                let rest = eval_rest xs' cW cH env
+                (s + (fst rest)), env
             | _ -> raise (Error("Invalid syntax."))
-//            let er_str, e = eval_rest xs' cW cH env
-//            ((fst s) + "\n" + er_str), env
 
-    printfn "about to draw"
     (* format svg code for drawings *)
     let sequence_str =
         match expr with

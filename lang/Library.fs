@@ -47,6 +47,7 @@ type Brush =
 | Funky
 | Thick
 | Whispy
+| Sparse
 | Other of string
 
 type Expr =
@@ -54,5 +55,6 @@ type Expr =
 | Canvas of float * float * Color
 | Sequence of Expr list
 | Assignment of string * (float * float) list
+| Gridline of int
 
 exception Error of string

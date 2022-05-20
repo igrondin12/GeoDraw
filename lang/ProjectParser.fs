@@ -61,10 +61,11 @@ let pmany2sep p sep =
  *)
 let pnotcom = psat (fun c -> c <> '#' && c <> '\n')
 let pcomment =
-    pbetween (pchar '#') peof (pmany1 pnotcom)
-    <|> pbetween (pchar '#') pws1 (pmany1 pnotcom)
+   ( pmany1
+    (pbetween (pchar '#') peof (pmany1 pnotcom)
+    <|> pbetween (pchar '#') pws1 (pmany1 pnotcom)))
     |>> (fun _ -> true)
- //   <!> "pcomment"
+    <!> "pcomment"
 
 (* my_ws
  *   Let's consider any non-newline whitespace or
@@ -121,7 +122,7 @@ let pfloat_num = (neg_float_num <|> float_num) |>> Num // <!> "pfloat_num"
 let pnumber = pfloat_num <|> pint_num
 
 (* parses a number as a float *)
-let number = int_num <|> neg_int_num <|> float_num <|> neg_float_num
+let number = float_num <|> neg_float_num <|> int_num <|> neg_int_num
 
 (* COLOR PARSER *)
 let pColor = pad (inParens (pmany2sep (pad int_num) (pad (pchar ',')))) |>> Color <!> "pColor"
@@ -294,9 +295,11 @@ let pPoint =
             (pad number)
             (fun (n1, n2) -> (n1, n2)))) <!> "pPoint"
 
+(* parses a list of points (i.e. float tuples) *)
 let pPointList =
     (inBrackets (pad (pmany2sep pPoint (pad (pchar ','))))) <!> "pPointList"
 
+(* parses the declaration of a new brush that the user declares *)
 let pNewBrush =
     (pseq
         (pleft (pstr "brush") pws1)
@@ -310,7 +313,7 @@ let pNewBrush =
                     (n, ps)))
     (fun (b, (n, ps)) -> Assignment(n, ps))) <!> "pNewBrush"
         
-
+(* parses the brush type within a call to draw *)
 let pBrush = (pad (inQuotes pBrushName)) |>>
                  (fun s ->
                      match s with
@@ -318,6 +321,7 @@ let pBrush = (pad (inQuotes pBrushName)) |>>
                      | "funky" -> Funky
                      | "thick" -> Thick
                      | "whispy" -> Whispy
+                     | "sparse" -> Sparse
                      | _ -> Other(s)) <!> "pBrush"
 
 (* DRAW PARSER *)
@@ -333,7 +337,14 @@ let pDraw = (pright (pstr "draw") (pad (inParens (
             (fun (bs, (xs, s)) -> (bs, xs, s)))
         (fun (e, (bs, xs, s)) -> Draw(e, bs, xs, s))))))) <!> "pDraw"
 
-exprImpl := pDraw <|> pCanvas <|> pNewBrush
+(* GRIDLINES PARSER *)
+let pGrid =
+    (pseq
+        (pleft (pstr "gridlines") pws0)
+        (pad (inParens (neg_int_num <|> int_num)))
+        (fun (s, n) -> Gridline(int n))) <!> "pGrid"
+
+exprImpl := pDraw <|> pCanvas <|> pNewBrush <|> pGrid
 
 (* pexprs
  *  Parses a sequence of expressions.  Sequences are
@@ -341,6 +352,7 @@ exprImpl := pDraw <|> pCanvas <|> pNewBrush
  *)
 let pexprs = pmany1 (pleft (pad expr) pws0) |>> Sequence
 
+//let grammar = pleft pexprs peof
 let grammar = pleft pexprs (peof <|> pcomment)
 
 (* parse
@@ -348,8 +360,8 @@ let grammar = pleft pexprs (peof <|> pcomment)
  *   and returns an optional Expr.
  *)
 let parse i =
-    //let i' = debug i
-    let i' = prepare i
+    let i' = debug i
+    //let i' = prepare i
     match grammar i' with
     | Success(ast, _) -> Some ast
     | Failure(_, _) -> None

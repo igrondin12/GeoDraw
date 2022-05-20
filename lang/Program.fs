@@ -20,13 +20,10 @@ let main argv =
         (* try to parse what they gave us *)
         let ast_maybe = parse input
 
-//        printfn "%A" ast_maybe
-
         (* try to evaluate what we parsed... or not *)
         match ast_maybe with
         | Some ast ->
             let output = eval ast Map.empty
-//            printfn "%s" output
             use sw = new StreamWriter(file + ".svg")    // create svg file
             sw.WriteLine(output)                         // draw in svg file
             printfn "Success! %s created." (file + ".svg")
