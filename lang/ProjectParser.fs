@@ -65,7 +65,7 @@ let pcomment =
     (pbetween (pchar '#') peof (pmany1 pnotcom)
     <|> pbetween (pchar '#') pws1 (pmany1 pnotcom)))
     |>> (fun _ -> true)
-    <!> "pcomment"
+//    <!> "pcomment"
 
 (* my_ws
  *   Let's consider any non-newline whitespace or
@@ -125,7 +125,7 @@ let pnumber = pfloat_num <|> pint_num
 let number = float_num <|> neg_float_num <|> int_num <|> neg_int_num
 
 (* COLOR PARSER *)
-let pColor = pad (inParens (pmany2sep (pad int_num) (pad (pchar ',')))) |>> Color <!> "pColor"
+let pColor = pad (inParens (pad (pmany2sep (pad int_num) (pad (pchar ','))))) |>> Color <!> "pColor"
 
 (* Canvas parser *)                
 let pCoords =
@@ -150,8 +150,8 @@ let pCanvas =
     (pright (pstr "canvas")
         (((pad (inParens pCoords)) |>> (fun (n1, n2) -> Canvas(n1, n2, Color([255.0;255.0;255.0])))) <|>
         ((pad (inParens (pseq
-                      (pleft (pCoords) (pad (pchar ',')))
-                      (pColor)
+                      (pleft (pad pCoords) (pad (pchar ',')))
+                      (pad (pColor))
                       (fun ((n1, n2), c) -> Canvas(n1, n2, c)))))))) <!> "pCanvas"
 
 (* variable parsers *)
@@ -297,7 +297,7 @@ let pPoint =
 
 (* parses a list of points (i.e. float tuples) *)
 let pPointList =
-    (inBrackets (pad (pmany2sep pPoint (pad (pchar ','))))) <!> "pPointList"
+    (inBrackets (pad (pmany2sep pPoint (pad (pchar ','))) <|> (pad (pPoint |>> (fun p -> [p]))))) <!> "pPointList"
 
 (* parses the declaration of a new brush that the user declares *)
 let pNewBrush =
@@ -341,7 +341,7 @@ let pDraw = (pright (pstr "draw") (pad (inParens (
 let pGrid =
     (pseq
         (pleft (pstr "gridlines") pws0)
-        (pad (inParens (neg_int_num <|> int_num)))
+        (pad (inParens (pad int_num)))
         (fun (s, n) -> Gridline(int n))) <!> "pGrid"
 
 exprImpl := pDraw <|> pCanvas <|> pNewBrush <|> pGrid
@@ -352,7 +352,6 @@ exprImpl := pDraw <|> pCanvas <|> pNewBrush <|> pGrid
  *)
 let pexprs = pmany1 (pleft (pad expr) pws0) |>> Sequence
 
-//let grammar = pleft pexprs peof
 let grammar = pleft pexprs (peof <|> pcomment)
 
 (* parse
