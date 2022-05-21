@@ -32,6 +32,8 @@
 \usepackage{tabularx}
 \usepackage{multirow}
 \usepackage{adjustbox}
+\usepackage{longtable}
+
 
 % This will set LaTeX to look for figures in the same directory as the .tex file
 \graphicspath{.} % The dot means current directory.
@@ -207,7 +209,7 @@ Here is the equivalent, formal definition of the grammar in Backus-Naur of GeoDr
  We have the following primitive types: \texttt{x}, \texttt{y}, \texttt{float}, and equality symbols. Our main combining forms are \texttt{canvas}, \texttt{Color}, \texttt{Bound}, \texttt{Oper}, \texttt{Equation}, and \texttt{draw}. The first call of a program should always be \texttt{canvas}, and after that every call should be \texttt{draw}.
 
 	\begin{center}
-    \begin{tabular}{|p{20mm}|p{35mm}|p{15mm}|p{20mm}|p{55mm}|}
+    \begin{longtable}{|p{20mm}|p{35mm}|p{15mm}|p{20mm}|p{55mm}|}
 	  \hline
 	  Syntax & Abstract Syntax & Type & Prec./Assoc. & Meaning \\
 		\hline
@@ -251,7 +253,7 @@ Here is the equivalent, formal definition of the grammar in Backus-Naur of GeoDr
 		\hline
 		 (n, n, n) & Color of float list & Color & N/A & Represents a color in RGB format \\
 		 \hline
- 		 ‘simple’ $\mid$ ‘funky’ $\mid$ ‘thick’ $\mid$ s & Simple $\mid$ Funky $\mid$ Thick $\mid$ Other of s &
+ 		 ‘simple’ $\mid$ ‘funky’ $\mid$ ‘thick’ $\mid$ ‘sparse’ $\mid$ ‘wide’ $\mid$ s & Simple $\mid$ Funky $\mid$ Thick $\mid$ Sparse $\mid$ Wide $\mid$ Other of s &
 		 Brush & N/A & Brush type to use when drawing a specific line. Simple is a single line, while Funky and Thick are preprogrammed \\
 		 \hline
  		 draw(e, [bounds], c, brush) & Draw of Equation * Bound * Color * Brush &
@@ -259,8 +261,14 @@ Here is the equivalent, formal definition of the grammar in Backus-Naur of GeoDr
 		 \hline
  		 canvas$(n, n)$ $\mid$ canvas$(n, n, c)$ & Canvas of float * float * Color &
 		 Expr & N/A & Sets the canvas on which the user will be drawing, and sets its background color optionally. This line MUST be called as the first line in a program, and must not be called again. \\
+		 \hline
+ 		 gridlines$(i)$ & Gridline of int & Expr & N/A & Adds a grid to the canvas at the specified interval i. i must be a positive integer \\
+		 \hline
+ 		 brush s = [points] & Assignment of string * (float*float) list & Expr & N/A & Creates a custom brush with the specified points, where \emph{points} is a list of float 2-tuples where x and y are on the interval $[0, 5]$\\
+		 \hline
+ 		 \# s & N/A & N/A & N/A & Everything on a line after the ‘\#’ is a comment and will not be parsed. Comments cannot have additional pound signs within them.\\
 	  \hline
-	\end{tabular}s
+	\end{longtable}
 	\end{center}
 
 	The user must first create a canvas by inputting a height, width and an optional background color. Drawings will end at the sides of the canvas unless bounds are specified. Drawings are the main elements in the language. They are a combination of an equation, its bounds, a color, and a brush style. Equations must have the y variable on the left, an $=$, followed by a mathematical expression. Bounds denote the limits of the equation for x, y, or both. Mathematical expressions combine our operations, real numbers, and the x variable. Brush styles consist of a string, which indicates a brush strokes type we have created. \\\\
@@ -277,7 +285,6 @@ Here is the equivalent, formal definition of the grammar in Backus-Naur of GeoDr
 \section{Remaining Work:} We would like to implement a custom brush feature, that allows the user to design a brush by entering a list of points and store this to use throughout a program. We are also interested in making our selection of available brushes more robust. \\
 
 Right now, all equations must be functions with x as the independent variable and y as the dependent variable. We would like to add functionality to allow x on the left side of the equation to improve user experience and allow for vertical lines. As a stretch goal, we would like to implement inequality shading for our equations.
-
 
 
 % DO NOT DELETE ANYTHING BELOW THIS LINE
