@@ -10,16 +10,27 @@ open ProjectInterpreter
 type TestClass () =
 
     [<TestMethod>]
+    member this.TestMethodParseSpaces () =
+        let input = "canvas(  100  ,  100  ,  (  3  ,  33  ,  33  )  )\nbrush   test  =   [  (  4.2  ,  3  )  ]  \ngridlines(  10  )  \ndraw(  y  = ( 2  *   x  )  ,  [  x  <  4  ]  ,  (  3  ,  4  ,  5  )  ,  'test'   )  \n"
+        let expected = Sequence([Canvas(100.0, 100.0, Color([3.0;33.0;33.0])); Assignment("test", [(4.2, 3.0)]); Gridline(10); Draw(Equation(Y, Equal, Mult(Num(2), X)), SingleBound(Xvar, Less, 4.0), Color([3.0;4.0;5.0]), Other("test"))])
+        let result = parse input
+        match result with
+        | Some ast ->
+            Assert.AreEqual(expected, ast)
+        | None ->
+            Assert.IsTrue false
+
+    [<TestMethod>]
     member this.TestMethodEvalExpression () =
         let input = "canvas(10,10) \n draw( y = (x + 2), [x < 4], (0,0,0), \'simple\')"
-        let expected = "<?xml version=\"1.0\" standalone=\"no\"?>\n<svg viewBox=\"0 0 600 600\"  xmlns=\"http://www.w3.org/2000/svg\">\n<rect width=\"10\" height=\"10\" style=\"fill:rgb(255, 255, 255);stroke-width:1;stroke:rgb(0,0,0)\" />\n<polyline points=\"0.1, 7.9 0.2, 7.8 0.3, 7.7 0.4, 7.6 0.5, 7.5 0.6, 7.4 0.7, 7.3 0.8, 7.2 0.9, 7.1 1, 7 1.1, 6.9 1.2, 6.8 1.3, 6.7 1.4, 6.6 1.5, 6.5 1.6, 6.4 1.7, 6.3 1.8, 6.2 1.9, 6.1 2, 6 2.1, 5.9 2.2, 5.8 2.3, 5.7 2.4, 5.6 2.5, 5.5 2.6, 5.4 2.7, 5.3 2.8, 5.2 2.9, 5.1 3, 5 3.1, 4.9 3.2, 4.8 3.3, 4.7 3.4, 4.6 3.5, 4.5 3.6, 4.4 3.7, 4.3 3.8, 4.2 3.9, 4.1 \" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-width=\"0.5\"/>\n<rect width=\"10\" height=\"10\" style=\"fill:rgba(0,0,0,0);stroke-width:1;stroke:rgb(0,0,0)\" />\n</svg>\n"
+        let expected = "<?xml version=\"1.0\" standalone=\"no\"?>\n<svg viewBox=\"0 0 600 600\"  xmlns=\"http://www.w3.org/2000/svg\">\n<rect width=\"10\" height=\"10\" style=\"fill:rgb(255, 255, 255);stroke-width:1;stroke:rgb(0,0,0)\" />\n\n<polyline points=\"0.1, 7.9 0.2, 7.8 0.3, 7.7 0.4, 7.6 0.5, 7.5 0.6, 7.4 0.7, 7.3 0.8, 7.2 0.9, 7.1 1, 7 1.1, 6.9 1.2, 6.8 1.3, 6.7 1.4, 6.6 1.5, 6.5 1.6, 6.4 1.7, 6.3 1.8, 6.2 1.9, 6.1 2, 6 2.1, 5.9 2.2, 5.8 2.3, 5.7 2.4, 5.6 2.5, 5.5 2.6, 5.4 2.7, 5.3 2.8, 5.2 2.9, 5.1 3, 5 3.1, 4.9 3.2, 4.8 3.3, 4.7 3.4, 4.6 3.5, 4.5 3.6, 4.4 3.7, 4.3 3.8, 4.2 3.9, 4.1 \" fill=\"none\" stroke=\"rgb(0, 0, 0)\" stroke-width=\"0.5\"/>\n<rect width=\"10\" height=\"10\" style=\"fill:rgba(0,0,0,0);stroke-width:1;stroke:rgb(0,0,0)\" />\n</svg>\n"
 
 //Sequence([Canvas(10.0, 10.0, Color([255.0; 255.0; 255.0])); Draw(Equation(Y, Equal, Add(X, Num(2))), NoBounds([]), Color([0.0; 0.0; 0.0]), Simple)])
 
         let result = parse input
         match result with
         | Some ast ->
-            let output = eval ast
+            let output = eval ast Map.empty
             Assert.AreEqual(expected, output)
         | None ->
             Assert.IsTrue false
