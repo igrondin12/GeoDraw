@@ -359,8 +359,8 @@ let grammar = pleft pexprs (peof <|> pcomment)
  *   and returns an optional Expr.
  *)
 let parse i =
-    let i' = debug i
-    //let i' = prepare i
+    //let i' = debug i
+    let i' = prepare i
     match grammar i' with
     | Success(ast, _) -> Some ast
     | Failure(_, _) -> None
