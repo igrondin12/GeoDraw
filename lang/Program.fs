@@ -7,32 +7,34 @@ open System.IO
 
 [<EntryPoint>]
 let main argv =
+    (* Check for proper usage *)
+    if argv.Length <> 1 then
+        printfn "Usage: dotnet run <file>"
+        exit 1
+
     try
-        let input = prepare argv.[0]                  // read in input
-(*
-*        let ast_maybe = grammar input
-*        match ast_maybe with
-*        | Some ast ->
-*            let output = eval ast
-*            use sw = new StreamWriter("output.svg")
-*            sw.WriteLine(output)
-*        | None ->
-*            printfn "Invalid program."
-*            exit 1
-*        0    
-*)
+        (* read in the input file *)
+        let file = argv.[0]
+        let input = File.ReadAllText file
 
-        match (grammar input) with
-        | Success(res, _) ->
-             let output = eval res  // evaluate parsed input
-             use sw = new StreamWriter("output.svg")
-             sw.WriteLine(output)    
-        | Failure(_,_) -> printfn "nope"
+        (* try to parse what they gave us *)
+        let ast_maybe = parse input
 
-    with 
-    | _ -> printfn "Usage: please enter an Equation. See semantics table for details."       
-    0
-      
+        (* try to evaluate what we parsed... or not *)
+        match ast_maybe with
+        | Some ast ->
+            let output = eval ast Map.empty
+            use sw = new StreamWriter(file + ".svg")    // create svg file
+            sw.WriteLine(output)                         // draw in svg file
+            printfn "Success! %s created." (file + ".svg")
+            0
+        | None ->
+           printfn "Invalid program."
+           1
+    with
+    | Error(s) -> printfn "Error: %s" s; 1
+    | _ -> printfn "Program failed. Exiting"; 1
+
 
 
   

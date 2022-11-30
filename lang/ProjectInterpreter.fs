@@ -1,6 +1,18 @@
 module ProjectInterpreter
 
 open CS334
+open System
+
+(* Represents our brush variable environment *)
+type Env = Map<string, (float * float) list>
+
+// MACROS
+let vbWidth = 600 // maximum height that can be specified
+let vbHeight = 600 
+let vbDims = " " + (string vbWidth) + " " + (string vbHeight)
+let brushWidth = 5.0 //point list for brushes must be contained within a 5*5 space
+let brushHeight = 5.0
+let offset = 40    // used to add randomness to brushes
 
 (*
  * Evaluate an operation given a value for x.
@@ -17,29 +29,259 @@ let rec evalOp o n =
     | Sub(o1, o2) -> (evalOp o1 n) - (evalOp o2 n)
     | Mult(o1, o2) -> (evalOp o1 n) * (evalOp o2 n)
     | Div(o1, o2) -> (evalOp o1 n) / (evalOp o2 n)
+    | Pow(o1, o2) -> (evalOp o1 n) ** (evalOp o2 n)
+    | Abs(o) -> abs (evalOp o n)
+    | Sin(o) -> Math.Sin (evalOp o n)
+    | Cos(o) -> Math.Cos (evalOp o n)
+    | Sqrt(o) -> sqrt (evalOp o n)
     | _ -> failwith "Invalid Operation"
 
 (*
  * Generate points to graph for x values between 0 and a given number.
  *
- * @param    n Upper bound for x values.
+ * @param   bm Map of bounds
+ * @param    o Operation to evaluate.
+ * @param   ch Canvas height (to flip right side up)
  * @return     List of float tuples
  *)
-let gen_points o n =
-    [0.0..0.1..n] |> List.map (fun x -> (x, (evalOp o x)))
+let gen_points o (bm:Map<string, float>) cH =
+    let xL:float = bm.["xL"]
+    let xU:float = bm.["xU"]
+    let yL:float = bm.["yL"]
+    let yU:float = bm.["yU"]
+    [xL..0.1..xU] |> List.map (fun x -> Math.Round(x, 1)) 
+                  |> List.map (fun x -> (x, (evalOp o x)))
+                  |> List.filter (fun (x, y) -> x < xU && x > xL)
+                  |> List.map (fun (x, y) -> (x, cH - y))
+                  |> List.filter (fun (x, y) -> y > (cH - yU) && y < (cH - yL))
 
 (* EVALUATOR *)
 let doctype="<?xml version=\"1.0\" standalone=\"no\"?>\n"
-let prefix = "<svg viewBox=\"0 0 100 100\"  xmlns=\"http://www.w3.org/2000/svg\">\n"
+let prefix = "<svg viewBox=\"0 0" + vbDims + "\"  xmlns=\"http://www.w3.org/2000/svg\">\n"
 let suffix = "</svg>\n"
 
-let draw xs : string =
+(*
+ * Combine a list of RGB values for a color into one string with colons
+ * in between. ie [1;2;3] goes to "1, 2, 3"
+ * @param cs    A list of color values
+ * @return      A string
+ *)
+let gen_col_str c : string =
+    let cs =
+        match c with
+        | Color(lst) -> lst
+    let rec helper cs : string list =
+        match cs with
+        | [] -> []
+        | c::cs' ->
+            if c <= 255.0 then
+                [(string c)]@(helper cs')
+            else
+                raise (Error("color value must be less than 256"))
+    (helper cs) |> String.concat ", "
+
+(*
+ * generates a line of svg code for a polyline.
+ * @param xs     List of points in the line
+ * @param cs     Color object (color of the line)
+ * @param brush  Type of brush to use
+ * @return       String of svg code
+ *)
+let draw xs cs brush : string =
     let xs' = xs |> List.fold (fun acc (a, b) -> acc + (string a) + ", " + (string b) + " ") ""
-    "<polyline points=\"" + xs' + "\" fill=\"none\" stroke=\"black\"/>"
+    let col_str = "rgb(" + (gen_col_str cs) + ")"
+    "<polyline points=\"" + xs' + "\" fill=\"none\" stroke=\"" + col_str + "\" stroke-width=\"0.5\"/>"
+
+(*
+ * Fill in a map of bounds for an equation with the correct values
+ * @param bound    Bound to add to map.
+ * @param map      Map of bounds for the equation to modify
+ * @param cW       Total width for the canvas
+ * @param cH       Total height for the canvas
+ * @return         The modified map with the bound added
+ *)
+let boundEval bound (map: Map<string, float>) cW cH =
+    let (v, eq, f) =
+        match bound with
+        | SingleBound(v, eq, f) -> (v, eq, f)
+        | _ -> raise (Error("invalid bounds field"))
+    let key = 
+        match (v, eq, f) with
+        | Xvar, Less, _ -> if f < cW then "xU" else failwith "nope"
+        | Xvar, Greater, _ -> if f < cW then "xL" else failwith "nope"
+        | Yvar, Less, _ -> if f < cH then "yU" else failwith "nope"
+        | Yvar, Greater, _ -> if f < cH then "yL" else failwith "nope"
+        | _, _, _ -> raise (Error("invalid bounds field"))
+
+    let map' = map.Add(key, f)
+    map'
+
+(*
+ * Generate a list of points of a given operation within the bounds provided
+ * by the user.
+ * @param op      The operation to evaluate.
+ * @param bounds  A list of Bounds
+ * @param cW      The canvas width
+ * @param cH      The canvas height
+ * @return        A list of points
+ *)
+let make_bounds_map op bound cW cH =
+    let bm = [("xL", 0.0); ("xU", cW); ("yL", 0.0); ("yU", cH)] |> Map.ofList
+    let bs =
+        match bound with
+        | SingleBound(v, eq, f) -> [SingleBound(v, eq, f)]
+        | BoundList(bs) -> bs
+        | NoBounds(cs) -> []
+    let rec helper bounds map = 
+        match bounds with
+        | [] -> map
+        | b::bs' ->
+            let map' = (boundEval b map cW cH)
+            helper bs' map'
+    helper bs bm
+
+(*
+ * Split list of points if there is supposed to be a gap
+ * (from bounds constraints) and then generate svg code for each list
+ * @param    ps List of points
+ * @param    cs List of colors (for draw function)
+ * @param     b Brush type
+ * @return      A tuple of lists
+ *)
+let draw_split_points (points: (float*float) list) cs b =
+    let len = (points.Length) - 2
+    let is = [0..len]
+    let rec helper js (ps: (float*float) list) =
+        match js with
+        | [] -> [ps]
+        | j::js' ->
+            if(((fst ps.[j+1]) - (fst ps.[j])) > 0.5) then
+                let f, b = List.splitAt (j+1) ps
+                let l = (List.length b) - 2
+                let ks = [0..l]
+                f::(helper ks b)
+            else
+                helper js' ps
+
+    helper is points
+        |> List.map (fun xs -> (draw xs cs b)) |> List.fold (+) "\n"
     
-let eval e =
-    let str =
-        match e with
-        | Equation (y, eq, op) -> (draw (gen_points op 3.0)) //change the three later
-    doctype + prefix + str + suffix
+(*
+ * Generate svg code for multiple lines that make up a single brush stroke
+ * @param op    operation for the line
+ * @param bs    bounds for the line
+ * @param cW    canvas width
+ * @param cH    canvas height
+ * @param b     type of brush to use
+ *)
+let brush_stroke op bs cW cH cs b (env: Env) =
+    let bm = make_bounds_map op bs cW cH
+    let points = gen_points op bm cH
+    let brush_map : Map<string, (float * float) list> =
+        Map.empty.
+            Add("simple", [(2.5,2.5)]).
+            Add("funky", [(3.0, 3.0); (2.0, 3.0); (3.0, 2.0)]).
+            Add("whispy", [(1.0, 1.0); (2.0, 2.0); (3.0, 4.0)]).
+            Add("thick", [(1.0, 1.0); (2.0, 2.0); (3.0, 3.0); (4.0,4.0);
+                         (1.0, 4.0); (2.0, 3.0); (3.0,2.0); (4.0, 1.0)]).
+            Add("sparse", [(1.0, 1.0); (1.0, 4.0); (4.0, 4.0); (4.0, 1.0)])
+
+    (* generates points based off of brush type *)
+    let rec helper (points: (float * float) list) (xs: (float * float) list) (rand: int) =
+        match xs with
+            | [] -> ""
+            | x::xs' ->
+                if (fst x) > 5 || (snd x) > 5 then
+                    raise (Error("Brush points must be within [0,5]"))
+                let difX = (fst x) - brushWidth
+                let difY = (snd x) - brushHeight
+                let r = System.Random()
+                let points' = points |> List.map(fun (px, py) -> ((px + difX + ((float (r.Next offset)) / 100.0)), (py - difY - ((float (r.Next offset)) / 100.0))))
+                                     |> List.filter (fun (px, py) -> py > (cH - bm.["yU"]) && py < (cH - bm.["yL"]))
+                                     |> List.filter (fun (px, py) -> px < bm.["xU"] && px > bm.["xL"])
+                let res = 
+                    if (rand = 1) then 
+                        (draw_split_points points' cs b) + (helper points xs' 1)
+                    else
+                        (draw_split_points points cs b)  + (helper points xs' 0)
+                res 
+
+    match b with
+    | Simple -> helper points brush_map.["simple"] 0
+    | Funky -> helper points brush_map.["funky"] 1
+    | Thick -> helper points brush_map.["thick"] 1
+    | Whispy -> helper points brush_map.["whispy"] 1
+    | Sparse -> helper points brush_map.["sparse"] 1
+    | Other(s) ->  helper points env.[s] 1 
+
+(*
+ * Draws gridlines of a given interval
+ * @param    f interval
+ * @param   cW canvas max width
+ * @param   cH canvas max height
+ * return      svg code
+ *)
+let drawGridlines (f:int) cW cH=
+    // vertical lines
+    let vert_str = 
+        [0..f..cW]
+            |> List.map (fun n -> (string n) + "," + (string 0) + " " + (string n) + ", " + (string cH) + " ")
+            |> List.map (fun s -> "<polyline points=\"" + s + "\" fill=\"none\" stroke=\"rgb(175,175,175)\" stroke-width=\"0.5\"/>\n")
+            |> List.fold (+) ""
+    // horizontal lines
+    let hor_str =
+        [0..f..cH]
+            |> List.map (fun n -> (string 0) + "," + (string n) + " " + (string cW) + ", " + (string n) + " ")
+            |> List.map (fun s -> "<polyline points=\"" + s + "\" fill=\"none\" stroke=\"rgb(175,175,175)\" stroke-width=\"0.5\"/>\n")
+            |> List.fold (+) ""
+    vert_str + hor_str
+    
+
+(*
+ * evaluate the program
+ * @param expr    AST
+ * @return        string of svg code
+ *)
+let eval expr (env: Env) =
+    (* evaluate everything after the canvas line in the program *)
+    let rec eval_rest xs cW cH (env: Env) : string * Env=
+        match xs with
+        | [] -> "", env
+        | x::xs' ->
+            match x with
+            | Draw (e, bs, cs, b) ->
+                match e with
+                | Equation(y, eq, op) ->
+                    let s = (brush_stroke op bs cW cH cs b env)
+                    let rest = eval_rest xs' cW cH env
+                    (s + "\n" + (fst rest)), env
+            | Assignment(s, ps) ->
+                let env' = env.Add (s, ps)
+                let rest = eval_rest xs' cW cH env'
+                (fst rest), env'
+            | Canvas (_, _, _) -> raise (Error ("No canvas calls after first line of program"))
+            | Gridline(f) ->
+                let s = drawGridlines (int f) (int cW) (int cH)
+                let rest = eval_rest xs' cW cH env
+                (s + (fst rest)), env
+            | _ -> raise (Error("Invalid syntax."))
+
+    (* format svg code for drawings *)
+    let sequence_str =
+        match expr with
+        | Sequence(es) ->
+            let canvas_str = 
+                match es.Head with
+                | Canvas(x, y, c) ->
+                    let cW = x
+                    let cH = y
+                    if x > vbWidth || y > vbHeight then
+                        raise (Error("Canvas dimensions outside viewbox macros. See documentation"))
+                    let str = eval_rest es.Tail cW cH env
+                    "<rect width=\"" + (string x) + "\" height=\"" + (string y) + "\" style=\"fill:rgb(" + (gen_col_str c) + ");stroke-width:1;stroke:rgb(0,0,0)\" />\n" + (fst str) + "<rect width=\"" + (string x) + "\" height=\"" + (string y) + "\" style=\"fill:rgba(0,0,0,0);stroke-width:1;stroke:rgb(0,0,0)\" />\n"
+                | _ -> raise (Error("Need to start with a canvas"))
+            canvas_str
+        | _ -> raise (Error("Need sequence"))
+    doctype + prefix + sequence_str + suffix
+
         
